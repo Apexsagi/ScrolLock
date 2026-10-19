@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">ScrollLock</string>
+    <string name="accessibility_service_label">ScrollLock Scroll Monitor &amp; Enforcer</string>
+    <string name="accessibility_service_description">ScrollLock monitors feed scrolls, screen time, and app usage across your chosen apps to enforce digital wellbeing limits.</string>
+    <string name="welcome_headline">Take back your scroll.</string>
+    <string name="welcome_subtitle">You decide how much to scroll and watch. When your limit is reached, ScrollLock helps you stop.</string>
+    <string name="welcome_get_started">Get started</string>
+    <string name="welcome_how_it_works">How it works</string>
+    <string name="privacy_tagline">100% on-device. No accounts, no cloud sync, zero screen scraping.</string>
+    <string name="limit_reached_title">Your limit has been reached.</string>
+    <string name="limit_reached_subtitle">Take a deep breath and give your eyes a break. Your quota resets tonight at midnight.</string>
+    <string name="btn_return_home">Return to Home Screen</string>
+    <string name="btn_view_progress">Review Today\'s Progress</string>
+    <string name="btn_emergency_exit">Emergency Access</string>
+    <string name="btn_mindful_pause">5-Minute Mindful Pause</string>
+    <string name="add_apps_title">Select Apps to Restrict</string>
+    <string name="search_apps_hint">Search installed apps…</string>
+</resources>
