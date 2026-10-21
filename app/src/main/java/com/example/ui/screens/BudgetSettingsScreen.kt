@@ -87,6 +87,7 @@ fun BudgetSettingsScreen(
     onRecordFailedAttempt: () -> Unit,
     onResetFailedAttempts: () -> Unit,
     onUpdateRandomReset: (enabled: Boolean, minHours: Int, maxHours: Int) -> Unit,
+    onResetTodayUsage: () -> Unit = {},
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -205,7 +206,7 @@ fun BudgetSettingsScreen(
                                         Spacer(modifier = Modifier.width(4.dp))
                                     }
                                     Text(
-                                        text = if (userPreferences.isPinSet) "Protected" else "Not Set",
+                                        text = if (userPreferences.isPinSet) "PIN Protected" else "Not Set",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = if (userPreferences.isPinSet) WellbeingSuccess else WellbeingWarning
@@ -615,6 +616,24 @@ fun BudgetSettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        executeWithPinCheck(userPreferences.pinRequireResetUsage) {
+                            onResetTodayUsage()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("reset_today_usage_button"),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue)
+                ) {
+                    Text("Reset Today's Usage Allowance", fontWeight = FontWeight.SemiBold)
                 }
             }
         }

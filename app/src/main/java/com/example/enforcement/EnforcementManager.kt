@@ -72,8 +72,8 @@ class EnforcementManager(
                 )
                 return true
             } else {
-                // Timer has expired! Clear the lock
-                budgetRepository.clearLockResetTimestamp(budget.packageName)
+                // Timer has expired! Reset the usage allowance and clear the active reset timer
+                budgetRepository.resetTodayUsage(budget.packageName)
             }
         }
 

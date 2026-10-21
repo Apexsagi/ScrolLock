@@ -20,4 +20,7 @@ interface AppLaunchDao {
 
     @Query("DELETE FROM app_launches")
     suspend fun clearAll()
+
+    @Query("DELETE FROM app_launches WHERE packageName = :packageName AND timestamp >= :startTime AND timestamp < :endTime")
+    suspend fun clearLaunchesForPackageBetween(packageName: String, startTime: Long, endTime: Long)
 }

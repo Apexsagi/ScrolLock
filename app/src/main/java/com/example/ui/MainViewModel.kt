@@ -285,6 +285,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun resetTodayUsage(packageName: String? = null) {
+        viewModelScope.launch {
+            budgetRepository.resetTodayUsage(packageName)
+            refreshHealthAndUsage()
+        }
+    }
+
     fun clearAllData() {
         viewModelScope.launch {
             budgetRepository.clearAllData()
@@ -364,4 +371,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
+
+    fun recordFailedAttempt() = recordFailedPinAttempt()
+    fun resetFailedAttempts() = resetFailedPinAttempts()
+    fun updateRandomReset(enabled: Boolean, minHours: Int, maxHours: Int) =
+        setRandomResetSettings(enabled, minHours, maxHours)
 }

@@ -33,6 +33,9 @@ interface ScrollObservationDao {
     @Query("DELETE FROM scroll_observations")
     suspend fun clearAll()
 
+    @Query("DELETE FROM scroll_observations WHERE targetPackage = :packageName AND timestamp >= :startTime AND timestamp < :endTime")
+    suspend fun clearObservationsForPackageBetween(packageName: String, startTime: Long, endTime: Long)
+
     @Query("DELETE FROM scroll_observations WHERE timestamp < :cutoffTime")
     suspend fun deleteOlderThan(cutoffTime: Long)
 }

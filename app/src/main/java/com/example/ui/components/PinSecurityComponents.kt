@@ -206,7 +206,7 @@ fun PinEntryBody(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
@@ -337,7 +337,7 @@ fun VerifyPinDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = true)
     ) {
         PinEntryBody(
             title = "🔒 Enter PIN",
@@ -399,7 +399,7 @@ fun SetPinDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = true)
     ) {
         when (step) {
             1 -> {
@@ -564,7 +564,7 @@ fun ChangePinDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = true)
     ) {
         when (step) {
             1 -> {
@@ -763,7 +763,7 @@ fun RemovePinDialog(
     if (!isVerified) {
         Dialog(
             onDismissRequest = onDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false)
+            properties = DialogProperties(usePlatformDefaultWidth = true)
         ) {
             PinEntryBody(
                 title = "Enter Current PIN",

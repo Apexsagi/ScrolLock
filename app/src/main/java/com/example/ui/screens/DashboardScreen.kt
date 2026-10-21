@@ -1,17 +1,22 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -25,7 +30,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Biotech
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Lock
@@ -33,18 +40,18 @@ import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,22 +64,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.repository.BudgetRepository
-import com.example.data.repository.UsageStatsRepository
 import com.example.domain.model.AppBudget
 import com.example.domain.model.CapabilityState
 import com.example.domain.model.MonitoringHealthInfo
 import com.example.ui.ScreenDestination
-import com.example.ui.components.MonitoringStatusBadge
+import com.example.ui.components.AppleAppIcon
+import com.example.ui.components.AppleCard
+import com.example.ui.components.AppleCircularProgress
+import com.example.ui.theme.BorderColor
+import com.example.ui.theme.CardBackground
+import com.example.ui.theme.DangerRed
+import com.example.ui.theme.ElevatedCard
+import com.example.ui.theme.MainBackground
+import com.example.ui.theme.MutedText
 import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.WellbeingRestriction
-import com.example.ui.theme.WellbeingSuccess
-import com.example.ui.theme.WellbeingWarning
+import com.example.ui.theme.PrimaryText
+import com.example.ui.theme.SecondaryBackground
+import com.example.ui.theme.SecondaryText
+import com.example.ui.theme.SecondaryViolet
+import com.example.ui.theme.SuccessGreen
+import com.example.ui.theme.WarningAmber
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -90,226 +111,103 @@ fun DashboardScreen(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val dateString = remember {
-        val sdf = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
-        sdf.format(Date())
-    }
-
     val totalScreenTimeMinutes = screenTimesMap.values.sum() / (60 * 1000L)
     val totalScrolls = scrollCountsMap.values.sum()
     val totalLaunches = launchesMap.values.sum()
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add / Manage Apps") },
-                containerColor = PrimaryBlue,
-                contentColor = Color.White,
-                modifier = Modifier.testTag("fab_add_apps")
-            )
-        },
-        floatingActionButtonPosition = FabPosition.End
-    ) { innerPadding ->
+    // Calculate aggregate limits for progress ring
+    val totalLimitMinutes = budgets.filter { it.isEnabled }.sumOf { it.screenTimeLimitMinutes }
+    val overallTimeProgress = if (totalLimitMinutes > 0) {
+        (totalScreenTimeMinutes.toFloat() / totalLimitMinutes.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MainBackground)
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 20.dp),
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // A. Clean, Compact Apple Header
             item {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Today, $dateString",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "ScrollLock",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onRefresh,
-                            modifier = Modifier.testTag("dashboard_refresh_button")
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Data")
-                        }
-
-                        IconButton(
-                            onClick = { onNavigate(ScreenDestination.BUDGET_SETTINGS) },
-                            modifier = Modifier.testTag("dashboard_settings_button")
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
-                        }
-                    }
-                }
+                AppleHeader(
+                    onRefresh = onRefresh,
+                    onOpenSettings = { onNavigate(ScreenDestination.BUDGET_SETTINGS) }
+                )
             }
 
-            // Monitoring Health Banner (if permission is needed or degraded)
+            // B. Compact, Elegant Permission Banner (shown only when required)
             if (health.capabilityState != CapabilityState.AVAILABLE) {
                 item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("dashboard_health_banner"),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (health.capabilityState == CapabilityState.PERMISSION_REQUIRED)
-                                WellbeingRestriction.copy(alpha = 0.12f)
-                            else WellbeingWarning.copy(alpha = 0.12f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = health.capabilityState.label,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (health.capabilityState == CapabilityState.PERMISSION_REQUIRED)
-                                        WellbeingRestriction else WellbeingWarning
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = health.diagnosticMessage,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Button(
-                                onClick = { onNavigate(ScreenDestination.MONITORING_HEALTH) },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (health.capabilityState == CapabilityState.PERMISSION_REQUIRED)
-                                        WellbeingRestriction else WellbeingWarning
-                                )
-                            ) {
-                                Text("Fix", fontSize = 12.sp)
-                            }
-                        }
-                    }
+                    AppleHealthBanner(
+                        health = health,
+                        onFixClick = { onNavigate(ScreenDestination.MONITORING_HEALTH) }
+                    )
                 }
             }
 
-            // Daily Summary Hero Card
+            // C. Today's Screen Time Usage Summary (Hero Card)
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Today's Monitored Usage",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    text = "${totalScreenTimeMinutes}m Screen Time",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    text = "$totalScrolls scrolls • $totalLaunches app opens",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                )
-                            }
-
-                            ResetCountdownPill()
-                        }
-                    }
-                }
+                AppleTodayUsageSummary(
+                    screenTimeMinutes = totalScreenTimeMinutes,
+                    totalScrolls = totalScrolls,
+                    totalLaunches = totalLaunches,
+                    progress = overallTimeProgress
+                )
             }
 
-            // Section Header: Monitored Apps
+            // D. Restricted Apps Section Header
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Restricted Apps (${budgets.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Restricted Apps",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryText,
+                            fontSize = 17.sp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(PrimaryBlue.copy(alpha = 0.16f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${budgets.size} Active",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
 
                     TextButton(
                         onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
                         modifier = Modifier.testTag("dashboard_add_app_text_button")
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = PrimaryBlue)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add App", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("+ Add App", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
                     }
                 }
             }
 
-            // Cards for each Monitored App
+            // E. Restricted App Cards
             if (budgets.isEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "No apps selected yet",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Tap 'Add App' to pick Instagram, YouTube, Facebook, Snapchat, TikTok, or other apps on your device.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Button(
-                                onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-                            ) {
-                                Text("Select Apps Now")
-                            }
-                        }
-                    }
+                    AppleEmptyRestrictedApps(onAddApps = { onNavigate(ScreenDestination.APP_SELECTION) })
                 }
             } else {
                 items(budgets, key = { it.packageName }) { budget ->
@@ -317,7 +215,7 @@ fun DashboardScreen(
                     val screenTimeMillis = screenTimesMap[budget.packageName] ?: 0L
                     val launches = launchesMap[budget.packageName] ?: 0
 
-                    MultiAppBudgetCard(
+                    AppleRestrictedAppCard(
                         budget = budget,
                         scrollCount = scrollCount,
                         screenTimeMillis = screenTimeMillis,
@@ -326,16 +224,53 @@ fun DashboardScreen(
                         onClick = { onSelectAppDetail(budget.packageName) }
                     )
                 }
+
+                // Inline secondary action card to add more apps
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .border(1.dp, BorderColor.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
+                            .clickable { onNavigate(ScreenDestination.APP_SELECTION) },
+                        color = ElevatedCard.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Add More Apps to Restrict",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = PrimaryBlue,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
             }
 
-            // Quick Navigation Tools Grid
+            // F. Wellbeing Tools Section Header
             item {
                 Text(
                     text = "Wellbeing Tools",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(top = 8.dp)
+                    color = PrimaryText,
+                    fontSize = 17.sp,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
@@ -344,7 +279,7 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    QuickNavCard(
+                    AppleQuickNavCard(
                         title = "Analytics",
                         subtitle = "History & trends",
                         icon = Icons.Default.BarChart,
@@ -352,7 +287,7 @@ fun DashboardScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    QuickNavCard(
+                    AppleQuickNavCard(
                         title = "Feasibility Lab",
                         subtitle = "Test & validation",
                         icon = Icons.Default.Biotech,
@@ -367,7 +302,7 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    QuickNavCard(
+                    AppleQuickNavCard(
                         title = "Monitoring Health",
                         subtitle = "Inspect services",
                         icon = Icons.Default.HealthAndSafety,
@@ -375,9 +310,9 @@ fun DashboardScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    QuickNavCard(
-                        title = "Privacy",
-                        subtitle = "Local-only vault",
+                    AppleQuickNavCard(
+                        title = "Privacy Vault",
+                        subtitle = "Local-only storage",
                         icon = Icons.Default.Shield,
                         onClick = { onNavigate(ScreenDestination.PRIVACY) },
                         modifier = Modifier.weight(1f)
@@ -385,214 +320,332 @@ fun DashboardScreen(
                 }
             }
 
+            // Bottom clearance spacer: allows scrolling cards completely past the FAB!
             item {
-                Spacer(modifier = Modifier.height(72.dp)) // Extra space for FAB
+                Spacer(modifier = Modifier.height(30.dp))
+            }
+        }
+
+        // Floating Action Button: Pinned to bottom end with clear bottom padding
+        ExtendedFloatingActionButton(
+            onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
+            icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp)) },
+            text = { Text("Add / Manage Apps", fontWeight = FontWeight.SemiBold, fontSize = 13.sp) },
+            containerColor = PrimaryBlue,
+            contentColor = Color.White,
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 16.dp)
+                .shadow(8.dp, RoundedCornerShape(24.dp))
+                .testTag("fab_add_apps")
+        )
+    }
+}
+
+/**
+ * A. Clean, Compact Apple Header
+ */
+@Composable
+private fun AppleHeader(
+    onRefresh: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(PrimaryBlue, SecondaryViolet)
+                        )
+                    )
+                    .border(0.5.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                    .shadow(4.dp, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = "ScreenLock",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText,
+                    fontSize = 20.sp
+                )
+                Text(
+                    text = "Focus more. Live better.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(ElevatedCard)
+                    .border(1.dp, BorderColor.copy(alpha = 0.7f), CircleShape)
+                    .clickable(onClick = onRefresh)
+                    .testTag("dashboard_refresh_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh Data",
+                    tint = SecondaryText,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(ElevatedCard)
+                    .border(1.dp, BorderColor.copy(alpha = 0.7f), CircleShape)
+                    .clickable(onClick = onOpenSettings)
+                    .testTag("dashboard_settings_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = SecondaryText,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
 }
 
+/**
+ * B. Compact, Elegant Permission Warning Banner
+ */
 @Composable
-fun MultiAppBudgetCard(
-    budget: AppBudget,
-    scrollCount: Int,
-    screenTimeMillis: Long,
-    launchesCount: Int,
-    capabilityState: CapabilityState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+private fun AppleHealthBanner(
+    health: MonitoringHealthInfo,
+    onFixClick: () -> Unit
 ) {
-    val screenTimeMinutes = (screenTimeMillis / (60 * 1000L)).toInt()
-    val isTimeExhausted = budget.screenTimeLimitMinutes > 0 && screenTimeMinutes >= budget.screenTimeLimitMinutes
-    val isScrollExhausted = budget.scrollCountingSupported && budget.dailyLimit > 0 && scrollCount >= budget.dailyLimit
-    val isLaunchExhausted = budget.launchLimit > 0 && launchesCount >= budget.launchLimit
-    val isAnyExhausted = isTimeExhausted || isScrollExhausted || isLaunchExhausted
-
-    Card(
-        modifier = modifier
+    Surface(
+        modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .testTag("app_card_${budget.packageName}"),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .testTag("dashboard_health_banner"),
+        shape = RoundedCornerShape(16.dp),
+        color = DangerRed.copy(alpha = 0.12f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DangerRed.copy(alpha = 0.3f))
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header Row: Name, Category, Status Badge
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(PrimaryBlue.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = budget.displayName.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryBlue
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(DangerRed.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = DangerRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
+                Column {
+                    Text(
+                        text = "Permission Required",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = DangerRed,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Enable Accessibility to activate app restrictions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText,
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Button(
+                onClick = onFixClick,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text("Fix", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+    }
+}
+
+/**
+ * C. Today's Screen Time Usage Summary (Hero Card)
+ */
+@Composable
+private fun AppleTodayUsageSummary(
+    screenTimeMinutes: Long,
+    totalScrolls: Int,
+    totalLaunches: Int,
+    progress: Float
+) {
+    val gradientBrush = Brush.linearGradient(
+        colors = listOf(
+            ElevatedCard,
+            CardBackground,
+            SecondaryBackground
+        )
+    )
+
+    AppleCard(
+        backgroundColor = CardBackground,
+        shape = RoundedCornerShape(22.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(gradientBrush)
+                .padding(20.dp)
+        ) {
+            Column {
+                // Top Row: Title + Countdown badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "TODAY'S SCREEN TIME",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = SecondaryText,
+                        fontSize = 11.sp
+                    )
+
+                    AppleResetCountdownBadge()
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Middle Row: Big time value + Circular progress indicator
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column {
+                        val hours = screenTimeMinutes / 60
+                        val mins = screenTimeMinutes % 60
+                        val displayTime = when {
+                            hours > 0 -> "${hours}h ${mins}m"
+                            else -> "${mins}m"
+                        }
+
                         Text(
-                            text = budget.displayName,
-                            style = MaterialTheme.typography.titleMedium,
+                            text = displayTime,
+                            style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = PrimaryText,
+                            fontSize = 36.sp
                         )
+
                         Text(
-                            text = "${budget.category} • Mode: ${budget.lockMode.name}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = if (screenTimeMinutes > 0) "Monitored across your restricted apps" else "No usage recorded yet today",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    AppleCircularProgress(
+                        progress = progress,
+                        size = 64.dp,
+                        strokeWidth = 6.5.dp,
+                        primaryColor = if (progress >= 1f) DangerRed else PrimaryBlue,
+                        trackColor = BorderColor.copy(alpha = 0.45f)
+                    ) {
+                        Text(
+                            text = "${(progress * 100).toInt()}%",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryText
                         )
                     }
                 }
 
-                if (budget.isPaused) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = WellbeingWarning.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = "Paused",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = WellbeingWarning,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                } else if (isAnyExhausted) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = WellbeingRestriction.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            text = "Limit Reached",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = WellbeingRestriction,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                } else {
-                    MonitoringStatusBadge(state = capabilityState)
-                }
-            }
+                Spacer(modifier = Modifier.height(18.dp))
 
-            Spacer(modifier = Modifier.height(14.dp))
+                // Bottom Divider & Stats Pills
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(BorderColor.copy(alpha = 0.6f))
+                )
 
-            // Screen Time Metric
-            if (budget.screenTimeLimitMinutes > 0) {
-                val timeProgress = (screenTimeMinutes.toFloat() / budget.screenTimeLimitMinutes.toFloat()).coerceIn(0f, 1f)
-                val remainingMins = maxOf(0, budget.screenTimeLimitMinutes - screenTimeMinutes)
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        text = "Screen Time",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    AppleStatPill(
+                        label = "Feed Scrolls",
+                        value = "$totalScrolls",
+                        icon = Icons.Default.SwapVert,
+                        tint = SuccessGreen,
+                        modifier = Modifier.weight(1f)
                     )
-                    Text(
-                        text = "${screenTimeMinutes}m / ${budget.screenTimeLimitMinutes}m (${remainingMins}m left)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isTimeExhausted) WellbeingRestriction else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { timeProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = if (isTimeExhausted) WellbeingRestriction else PrimaryBlue,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
 
-            // Scroll Count Metric (if supported)
-            if (budget.scrollCountingSupported && budget.dailyLimit > 0) {
-                val scrollProgress = (scrollCount.toFloat() / budget.dailyLimit.toFloat()).coerceIn(0f, 1f)
-                val remainingScrolls = maxOf(0, budget.dailyLimit - scrollCount)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Feed Scrolls",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    AppleStatPill(
+                        label = "App Opens",
+                        value = "$totalLaunches",
+                        icon = Icons.Default.TouchApp,
+                        tint = WarningAmber,
+                        modifier = Modifier.weight(1f)
                     )
-                    Text(
-                        text = "$scrollCount / ${budget.dailyLimit} ($remainingScrolls left)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isScrollExhausted) WellbeingRestriction else PrimaryBlue
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { scrollProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = if (isScrollExhausted) WellbeingRestriction else WellbeingSuccess,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            // Footer Row: Launch count / Schedules & Quick Edit action
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (budget.launchLimit > 0) {
-                    Text(
-                        text = "$launchesCount / ${budget.launchLimit} opens today",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isLaunchExhausted) WellbeingRestriction else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else if (budget.isScheduleEnabled) {
-                    Text(
-                        text = String.format("Downtime: %02d:00–%02d:00", budget.scheduleStartHour, budget.scheduleEndHour),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = PrimaryBlue
-                    )
-                } else {
-                    Text(
-                        text = "Resets tonight at midnight",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Configure", fontSize = 12.sp, color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = PrimaryBlue)
                 }
             }
         }
@@ -600,7 +653,61 @@ fun MultiAppBudgetCard(
 }
 
 @Composable
-fun ResetCountdownPill(modifier: Modifier = Modifier) {
+private fun AppleStatPill(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = ElevatedCard.copy(alpha = 0.7f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(tint.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SecondaryText,
+                    fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppleResetCountdownBadge(modifier: Modifier = Modifier) {
     var millisLeft by remember { mutableLongStateOf(BudgetRepository.getMillisUntilMidnight()) }
 
     LaunchedEffect(Unit) {
@@ -617,32 +724,352 @@ fun ResetCountdownPill(modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(ElevatedCard)
+            .border(0.5.dp, BorderColor.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(
-            text = "Resets in $countdownFormatted",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.HourglassTop,
+                contentDescription = null,
+                tint = SecondaryText,
+                modifier = Modifier.size(11.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "Resets in $countdownFormatted",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = SecondaryText,
+                fontSize = 10.5.sp
+            )
+        }
+    }
+}
+
+/**
+ * D. Restricted App Card
+ */
+@Composable
+fun AppleRestrictedAppCard(
+    budget: AppBudget,
+    scrollCount: Int,
+    screenTimeMillis: Long,
+    launchesCount: Int,
+    capabilityState: CapabilityState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val screenTimeMinutes = (screenTimeMillis / (60 * 1000L)).toInt()
+    val isTimeExhausted = budget.screenTimeLimitMinutes > 0 && screenTimeMinutes >= budget.screenTimeLimitMinutes
+    val isScrollExhausted = budget.scrollCountingSupported && budget.dailyLimit > 0 && scrollCount >= budget.dailyLimit
+    val isLaunchExhausted = budget.launchLimit > 0 && launchesCount >= budget.launchLimit
+    val isAnyExhausted = isTimeExhausted || isScrollExhausted || isLaunchExhausted
+
+    val statusBadgeText = when {
+        !budget.isEnabled -> "Disabled"
+        budget.isPaused -> "Paused"
+        isAnyExhausted -> "Limit Reached"
+        capabilityState == CapabilityState.PERMISSION_REQUIRED -> "Permission Needed"
+        capabilityState == CapabilityState.DEGRADED -> "Degraded"
+        capabilityState != CapabilityState.AVAILABLE -> "Unavailable"
+        else -> "Active"
+    }
+
+    val statusColor = when {
+        !budget.isEnabled -> MutedText
+        budget.isPaused -> WarningAmber
+        isAnyExhausted -> DangerRed
+        capabilityState == CapabilityState.PERMISSION_REQUIRED -> DangerRed
+        capabilityState == CapabilityState.DEGRADED -> WarningAmber
+        capabilityState != CapabilityState.AVAILABLE -> MutedText
+        else -> SuccessGreen
+    }
+
+    AppleCard(
+        modifier = modifier.testTag("budget_card_${budget.packageName}"),
+        onClick = onClick,
+        backgroundColor = CardBackground,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // 1. Top Row: App Icon + Name + Category + Status Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AppleAppIcon(
+                        packageName = budget.packageName,
+                        displayName = budget.displayName,
+                        size = 44.dp
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = budget.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryText,
+                            fontSize = 15.sp
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = "${budget.category} • ${budget.lockMode.name}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SecondaryText,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                // Compact Status Badge
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = statusColor.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, statusColor.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(statusColor)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = statusBadgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 10.5.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 2. Middle Row: Screen Time Metric & Thin Progress Bar
+            if (budget.screenTimeLimitMinutes > 0) {
+                val timeProgress = (screenTimeMinutes.toFloat() / budget.screenTimeLimitMinutes.toFloat()).coerceIn(0f, 1f)
+                val remainingMins = maxOf(0, budget.screenTimeLimitMinutes - screenTimeMinutes)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Screen Time: ${screenTimeMinutes}m",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.5.sp
+                    )
+                    Text(
+                        text = "${budget.screenTimeLimitMinutes}m limit • ${remainingMins}m left",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Normal,
+                        color = if (isTimeExhausted) DangerRed else SecondaryText,
+                        fontSize = 11.5.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { timeProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = if (isTimeExhausted) DangerRed else PrimaryBlue,
+                    trackColor = ElevatedCard
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // Scroll Count Metric (if supported)
+            if (budget.scrollCountingSupported && budget.dailyLimit > 0) {
+                val scrollProgress = (scrollCount.toFloat() / budget.dailyLimit.toFloat()).coerceIn(0f, 1f)
+                val remainingScrolls = maxOf(0, budget.dailyLimit - scrollCount)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Feed Scrolls: $scrollCount",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PrimaryText,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.5.sp
+                    )
+                    Text(
+                        text = "${budget.dailyLimit} limit • $remainingScrolls left",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isScrollExhausted) DangerRed else SecondaryText,
+                        fontSize = 11.5.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { scrollProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = if (isScrollExhausted) DangerRed else SuccessGreen,
+                    trackColor = ElevatedCard
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // 3. Bottom Row: App opens or schedule + "Configure" action
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (budget.launchLimit > 0) {
+                    Text(
+                        text = "$launchesCount / ${budget.launchLimit} opens today",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isLaunchExhausted) DangerRed else SecondaryText,
+                        fontSize = 11.sp
+                    )
+                } else if (budget.lockResetTimestamp > System.currentTimeMillis()) {
+                    val sdf = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+                    val unlockTime = sdf.format(Date(budget.lockResetTimestamp))
+                    Text(
+                        text = "🔒 Unlocks at $unlockTime",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WarningAmber,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp
+                    )
+                } else {
+                    Text(
+                        text = "Resets tonight at midnight",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MutedText,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "Configure",
+                        fontSize = 12.sp,
+                        color = PrimaryBlue,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                        tint = PrimaryBlue
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun QuickNavCard(
+private fun AppleEmptyRestrictedApps(onAddApps: () -> Unit) {
+    AppleCard(
+        backgroundColor = CardBackground,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = PrimaryBlue,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "No Restricted Apps",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Select apps like Instagram, YouTube, TikTok, Facebook, or Reddit to start monitoring screen time and enforcing mindful limits.",
+                style = MaterialTheme.typography.bodySmall,
+                color = SecondaryText,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onAddApps,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(42.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Select Apps Now", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppleQuickNavCard(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    AppleCard(
         modifier = modifier.testTag("quick_nav_${title.lowercase()}"),
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        backgroundColor = CardBackground,
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
             modifier = Modifier
@@ -651,28 +1078,34 @@ private fun QuickNavCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .background(PrimaryBlue.copy(alpha = 0.12f), CircleShape),
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = PrimaryBlue,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
+
             Spacer(modifier = Modifier.height(10.dp))
+
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = PrimaryText,
+                fontSize = 14.sp
             )
+
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = SecondaryText,
+                fontSize = 11.sp
             )
         }
     }

@@ -1,6 +1,6 @@
 {
-  "name": "ScrollLock",
-  "description": "Take back your scroll. Digital wellbeing app to monitor and enforce daily scroll budgets for Instagram Reels and YouTube Shorts.",
+  "name": "ScreenLock",
+  "description": "Focus more. Live better. Apple-inspired digital wellbeing app to monitor and enforce daily screen time and scroll limits.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

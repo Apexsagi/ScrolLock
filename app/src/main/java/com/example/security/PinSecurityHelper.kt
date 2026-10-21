@@ -41,6 +41,8 @@ object PinSecurityHelper {
         return pin.length == 4 && pin.all { it.isDigit() }
     }
 
+    fun isValidPin(pin: String): Boolean = isValidPinFormat(pin)
+
     fun generateRandomDelayMinutes(minHours: Int, maxHours: Int): Int {
         val safeMin = maxOf(1, minHours) * 60
         val safeMax = maxOf(safeMin, maxHours * 60)

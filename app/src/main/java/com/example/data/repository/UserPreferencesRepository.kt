@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
 data class UserPreferences(
-    val onboardingCompleted: Boolean,
-    val strictModeProtection: Boolean,
-    val notificationsEnabled: Boolean,
-    val emergencyOverrideUsed: Boolean,
-    val lastResetDate: String,
+    val onboardingCompleted: Boolean = false,
+    val strictModeProtection: Boolean = true,
+    val notificationsEnabled: Boolean = true,
+    val emergencyOverrideUsed: Boolean = false,
+    val lastResetDate: String = "",
     // PIN Security System
     val pinHash: String = "",
     val pinSalt: String = "",

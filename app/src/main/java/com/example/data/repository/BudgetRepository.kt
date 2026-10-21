@@ -376,6 +376,50 @@ class BudgetRepository(private val database: ScrollLockDatabase) {
         }
     }
 
+    suspend fun resetTodayUsage(packageName: String? = null) {
+        val (start, end) = getTodayTimeRange()
+        val dateKey = getTodayDateKey()
+        if (packageName != null) {
+            scrollObservationDao.clearObservationsForPackageBetween(packageName, start, end)
+            appLaunchDao.clearLaunchesForPackageBetween(packageName, start, end)
+            clearLockResetTimestamp(packageName)
+            val budget = getBudget(packageName)
+            dailyUsageSummaryDao.upsertSummary(
+                DailyUsageSummaryEntity(
+                    dateKey = dateKey,
+                    targetPackage = packageName,
+                    verifiedScrollCount = 0,
+                    screenTimeMillis = 0L,
+                    launchesCount = 0,
+                    budgetReached = false,
+                    budgetLimitAtExhaustion = budget?.dailyLimit ?: 50,
+                    monitoringCompleteness = "RESET"
+                )
+            )
+            recordAuditLog(packageName, "USAGE_RESET", "Today's usage allowance reset for ${budget?.displayName ?: packageName}")
+        } else {
+            val budgets = getAllBudgetsOnce()
+            budgets.forEach { budget ->
+                scrollObservationDao.clearObservationsForPackageBetween(budget.packageName, start, end)
+                appLaunchDao.clearLaunchesForPackageBetween(budget.packageName, start, end)
+                clearLockResetTimestamp(budget.packageName)
+                dailyUsageSummaryDao.upsertSummary(
+                    DailyUsageSummaryEntity(
+                        dateKey = dateKey,
+                        targetPackage = budget.packageName,
+                        verifiedScrollCount = 0,
+                        screenTimeMillis = 0L,
+                        launchesCount = 0,
+                        budgetReached = false,
+                        budgetLimitAtExhaustion = budget.dailyLimit,
+                        monitoringCompleteness = "RESET"
+                    )
+                )
+            }
+            recordAuditLog("ALL", "USAGE_RESET", "All monitored apps usage allowances reset for today")
+        }
+    }
+
     suspend fun clearAllData() {
         scrollObservationDao.clearAll()
         dailyUsageSummaryDao.clearAll()

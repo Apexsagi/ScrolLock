@@ -1,10 +1,5 @@
 package com.example.ui.screens
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,18 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,9 +39,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -62,31 +53,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.UsageStatsRepository
+import com.example.data.repository.UserPreferences
 import com.example.domain.model.AppBudget
 import com.example.domain.model.DiscoveredApp
+import com.example.ui.components.AppleAppIcon
+import com.example.ui.components.AppleCard
+import com.example.ui.components.VerifyPinDialog
+import com.example.ui.theme.BorderColor
+import com.example.ui.theme.CardBackground
+import com.example.ui.theme.ElevatedCard
+import com.example.ui.theme.MainBackground
+import com.example.ui.theme.MutedText
 import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.WellbeingSuccess
-import com.example.ui.theme.WellbeingWarning
+import com.example.ui.theme.PrimaryText
+import com.example.ui.theme.SecondaryBackground
+import com.example.ui.theme.SecondaryText
+import com.example.ui.theme.SuccessGreen
 
 @Composable
 fun AppSelectionScreen(
     discoveredApps: List<DiscoveredApp>,
     existingBudgets: List<AppBudget>,
     isLoading: Boolean,
+    userPreferences: UserPreferences = UserPreferences(),
+    onRecordFailedAttempt: () -> Unit = {},
+    onResetFailedAttempts: () -> Unit = {},
     onSaveSelectedApps: (selected: List<DiscoveredApp>) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
+    var showVerifyPinDialog by remember { mutableStateOf(false) }
 
-    val categories = listOf("All", "Social", "Video", "Games", "Entertainment", "Productivity", "Installed")
+    val categories = listOf("All", "Social", "Video", "Entertainment", "Productivity", "Installed")
 
     val currentlySelectedPackages = remember(existingBudgets) {
         mutableStateListOf<String>().apply {
@@ -114,6 +118,7 @@ fun AppSelectionScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MainBackground)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.SpaceBetween
@@ -121,45 +126,74 @@ fun AppSelectionScreen(
         Column(modifier = Modifier.weight(1f)) {
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Header Row
+            // Apple Navigation Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onNavigateBack,
-                    modifier = Modifier.testTag("app_selection_back_button")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(onClick = onNavigateBack)
+                        .testTag("app_selection_back_button")
+                        .padding(horizontal = 4.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = "Add Apps to Restrict",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${currentlySelectedPackages.size} apps currently monitored",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Dashboard",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = PrimaryBlue
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PrimaryBlue.copy(alpha = 0.16f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "${currentlySelectedPackages.size} Selected",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryBlue
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Select Apps to Restrict",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
+            )
+
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Search Bar
+            // Apple-style Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search installed or popular apps…") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                placeholder = { Text("Search installed or popular apps…", color = MutedText, fontSize = 14.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = SecondaryText, modifier = Modifier.size(20.dp))
+                },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search", tint = SecondaryText, modifier = Modifier.size(18.dp))
                         }
                     }
                 },
@@ -167,10 +201,18 @@ fun AppSelectionScreen(
                     .fillMaxWidth()
                     .testTag("app_search_input"),
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = ElevatedCard,
+                    unfocusedContainerColor = ElevatedCard,
+                    focusedBorderColor = PrimaryBlue,
+                    unfocusedBorderColor = BorderColor,
+                    focusedTextColor = PrimaryText,
+                    unfocusedTextColor = PrimaryText
+                )
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Category Filter Chips
             LazyRow(
@@ -181,47 +223,31 @@ fun AppSelectionScreen(
                     FilterChip(
                         selected = selectedCategory == category,
                         onClick = { selectedCategory = category },
-                        label = { Text(category) },
+                        label = { Text(category, fontSize = 13.sp) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = PrimaryBlue,
-                            selectedLabelColor = MaterialTheme.colorScheme.surface
-                        )
+                            selectedLabelColor = Color.White,
+                            containerColor = ElevatedCard,
+                            labelColor = SecondaryText
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selectedCategory == category,
+                            borderColor = if (selectedCategory == category) PrimaryBlue else BorderColor
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Quick select helpers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Discovered Apps (${filteredApps.size})",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Row {
-                    TextButton(
-                        onClick = {
-                            val socialPkgs = discoveredApps.filter { it.category == "Social" || it.category == "Video" }.map { it.packageName }
-                            socialPkgs.forEach { if (!currentlySelectedPackages.contains(it)) currentlySelectedPackages.add(it) }
-                        }
-                    ) {
-                        Text("+ All Social/Video", fontSize = 12.sp, color = PrimaryBlue)
-                    }
-                }
-            }
-
+            // Apps List
             if (isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 40.dp),
+                        .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = PrimaryBlue)
@@ -230,14 +256,23 @@ fun AppSelectionScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 40.dp),
+                        .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No apps matched \"$searchQuery\"",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No apps found",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryText
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Try adjusting your search or category filter.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -245,239 +280,157 @@ fun AppSelectionScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(filteredApps, key = { it.packageName }) { app ->
-                        val isChecked = currentlySelectedPackages.contains(app.packageName)
-                        AppSelectionItem(
-                            app = app,
-                            isChecked = isChecked,
-                            onToggle = { checked ->
-                                if (checked) {
-                                    if (!currentlySelectedPackages.contains(app.packageName)) {
+                        val isSelected = currentlySelectedPackages.contains(app.packageName)
+
+                        AppleCard(
+                            modifier = Modifier
+                                .testTag("app_select_${app.packageName}")
+                                .clickable {
+                                    if (isSelected) {
+                                        currentlySelectedPackages.remove(app.packageName)
+                                    } else {
                                         currentlySelectedPackages.add(app.packageName)
                                     }
-                                } else {
-                                    currentlySelectedPackages.remove(app.packageName)
+                                },
+                            backgroundColor = CardBackground,
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AppleAppIcon(
+                                        packageName = app.packageName,
+                                        displayName = app.appName,
+                                        size = 44.dp
+                                    )
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column {
+                                        Text(
+                                            text = app.appName,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PrimaryText
+                                        )
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = app.category,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = SecondaryText
+                                            )
+
+                                            if (app.isScrollTrackingSupported) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(3.dp)
+                                                        .clip(CircleShape)
+                                                        .background(SecondaryText)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.SwapVert,
+                                                        contentDescription = null,
+                                                        tint = SuccessGreen,
+                                                        modifier = Modifier.size(11.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(2.dp))
+                                                    Text(
+                                                        text = "Scroll-trackable",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = SuccessGreen,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            if (!currentlySelectedPackages.contains(app.packageName)) {
+                                                currentlySelectedPackages.add(app.packageName)
+                                            }
+                                        } else {
+                                            currentlySelectedPackages.remove(app.packageName)
+                                        }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = PrimaryBlue,
+                                        uncheckedColor = SecondaryText
+                                    ),
+                                    modifier = Modifier.testTag("checkbox_${app.packageName}")
+                                )
                             }
-                        )
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
                 }
             }
         }
 
-        // Bottom Save Bar
+        // Sticky Bottom Save Button
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp
+                .padding(vertical = 14.dp),
+            color = MainBackground
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "${currentlySelectedPackages.size} Selected",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Instagram, YouTube, Facebook, etc.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Button(
-                    onClick = {
+            Button(
+                onClick = {
+                    val removedAny = existingBudgets.any { !currentlySelectedPackages.contains(it.packageName) }
+                    if (removedAny && userPreferences.isPinSet && userPreferences.pinRequireRemoveApps) {
+                        showVerifyPinDialog = true
+                    } else {
                         val selectedApps = discoveredApps.filter { currentlySelectedPackages.contains(it.packageName) }
                         onSaveSelectedApps(selectedApps)
                         onNavigateBack()
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    modifier = Modifier.testTag("save_selected_apps_button")
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Save & Apply")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AppSelectionItem(
-    app: DiscoveredApp,
-    isChecked: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onToggle(!isChecked) }
-            .testTag("app_select_item_${app.packageName}"),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-            else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("save_selected_apps_button"),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
-                // App Icon or Initial Badge
-                AppIconBox(app = app)
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = app.appName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        CategoryBadge(category = app.category)
-                    }
-
-                    Text(
-                        text = app.packageName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (app.isScrollTrackingSupported) {
-                            Text(
-                                text = "✓ Scroll & Reel Limits",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = WellbeingSuccess,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        } else {
-                            Text(
-                                text = "⏱ Time & Open Limits",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PrimaryBlue
-                            )
-                        }
-
-                        if (app.currentUsageMillis > 0L) {
-                            Text(
-                                text = " • ${UsageStatsRepository.formatScreenTime(app.currentUsageMillis)} today",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = "Save Selected Apps (${currentlySelectedPackages.size})",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
-
-            Checkbox(
-                checked = isChecked,
-                onCheckedChange = onToggle,
-                colors = CheckboxDefaults.colors(checkedColor = PrimaryBlue)
-            )
         }
     }
-}
 
-@Composable
-fun AppIconBox(app: DiscoveredApp) {
-    val bitmap = remember(app.iconDrawable) {
-        app.iconDrawable?.let { drawableToBitmap(it) }
-    }
-
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = "${app.appName} icon",
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
+    if (showVerifyPinDialog) {
+        VerifyPinDialog(
+            userPreferences = userPreferences,
+            onSuccess = {
+                showVerifyPinDialog = false
+                val selectedApps = discoveredApps.filter { currentlySelectedPackages.contains(it.packageName) }
+                onSaveSelectedApps(selectedApps)
+                onNavigateBack()
+            },
+            onDismiss = { showVerifyPinDialog = false },
+            onRecordFailedAttempt = onRecordFailedAttempt,
+            onResetFailedAttempts = onResetFailedAttempts
         )
-    } else {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(
-                    when (app.category) {
-                        "Social" -> PrimaryBlue.copy(alpha = 0.15f)
-                        "Video" -> WellbeingWarning.copy(alpha = 0.15f)
-                        "Games" -> WellbeingSuccess.copy(alpha = 0.15f)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = app.appName.take(1).uppercase(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = PrimaryBlue
-            )
-        }
-    }
-}
-
-@Composable
-fun CategoryBadge(category: String) {
-    Box(
-        modifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant,
-                RoundedCornerShape(6.dp)
-            )
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = category,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp
-        )
-    }
-}
-
-private fun drawableToBitmap(drawable: Drawable): Bitmap? {
-    return try {
-        if (drawable is BitmapDrawable && drawable.bitmap != null) {
-            drawable.bitmap
-        } else {
-            val width = drawable.intrinsicWidth.coerceAtLeast(1)
-            val height = drawable.intrinsicHeight.coerceAtLeast(1)
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            bitmap
-        }
-    } catch (_: Exception) {
-        null
     }
 }

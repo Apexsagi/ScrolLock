@@ -36,6 +36,9 @@ import com.example.ui.screens.MonitoringHealthScreen
 import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.PrivacyScreen
 import com.example.ui.screens.WelcomeScreen
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import com.example.ui.components.ScreenLockBottomBar
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.ScrollLockTheme
 
@@ -100,6 +103,13 @@ fun ScrollLockApp(viewModel: MainViewModel) {
     val isSpikeRunning by viewModel.isSpikeRunning.collectAsStateWithLifecycle()
     val savedSpikeRecords by viewModel.spikeRecords.collectAsStateWithLifecycle()
 
+    val isMainTab = currentScreen in listOf(
+        ScreenDestination.DASHBOARD,
+        ScreenDestination.ANALYTICS,
+        ScreenDestination.BUDGET_SETTINGS,
+        ScreenDestination.PRIVACY
+    )
+
     // Handle system back navigation when not on root Dashboard or Welcome
     if (currentScreen != null && currentScreen != ScreenDestination.DASHBOARD && currentScreen != ScreenDestination.WELCOME) {
         BackHandler {
@@ -107,128 +117,171 @@ fun ScrollLockApp(viewModel: MainViewModel) {
         }
     }
 
-    when (currentScreen) {
-        null -> {
-            // Calm initial splash surface while preferences load
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(48.dp)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            if (isMainTab) {
+                ScreenLockBottomBar(
+                    currentDestination = currentScreen,
+                    onNavigate = { dest -> viewModel.navigateTo(dest) }
                 )
             }
         }
+    ) { scaffoldPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = if (isMainTab) scaffoldPadding.calculateBottomPadding() else 0.dp)
+        ) {
+            when (currentScreen) {
+                null -> {
+                    // Calm initial splash surface while preferences load
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
 
-        ScreenDestination.WELCOME -> {
-            WelcomeScreen(
-                onGetStarted = { viewModel.navigateTo(ScreenDestination.ONBOARDING) }
-            )
-        }
+                ScreenDestination.WELCOME -> {
+                    WelcomeScreen(
+                        onGetStarted = { viewModel.navigateTo(ScreenDestination.ONBOARDING) }
+                    )
+                }
 
-        ScreenDestination.ONBOARDING -> {
-            OnboardingScreen(
-                monitoringHealth = health,
-                onRefreshHealth = { viewModel.refreshHealthAndUsage() },
-                onSaveInitialBudgets = { igLimit, ytLimit ->
-                    viewModel.updateBudgetLimit(MonitoredAppInfo.INSTAGRAM.packageName, igLimit)
-                    viewModel.updateBudgetLimit(MonitoredAppInfo.YOUTUBE.packageName, ytLimit)
-                },
-                onComplete = { viewModel.completeOnboarding() }
-            )
-        }
+                ScreenDestination.ONBOARDING -> {
+                    OnboardingScreen(
+                        monitoringHealth = health,
+                        onRefreshHealth = { viewModel.refreshHealthAndUsage() },
+                        onSaveInitialBudgets = { igLimit, ytLimit ->
+                            viewModel.updateBudgetLimit(MonitoredAppInfo.INSTAGRAM.packageName, igLimit)
+                            viewModel.updateBudgetLimit(MonitoredAppInfo.YOUTUBE.packageName, ytLimit)
+                        },
+                        onComplete = { viewModel.completeOnboarding() }
+                    )
+                }
 
-        ScreenDestination.DASHBOARD -> {
-            DashboardScreen(
-                budgets = budgets,
-                scrollCountsMap = scrollCountsMap,
-                screenTimesMap = screenTimesMap,
-                launchesMap = launchesMap,
-                health = health,
-                onNavigate = { dest -> viewModel.navigateTo(dest) },
-                onSelectAppDetail = { pkg -> viewModel.selectAppDetail(pkg) },
-                onRefresh = { viewModel.refreshHealthAndUsage() }
-            )
-        }
+                ScreenDestination.DASHBOARD -> {
+                    DashboardScreen(
+                        budgets = budgets,
+                        scrollCountsMap = scrollCountsMap,
+                        screenTimesMap = screenTimesMap,
+                        launchesMap = launchesMap,
+                        health = health,
+                        onNavigate = { dest -> viewModel.navigateTo(dest) },
+                        onSelectAppDetail = { pkg -> viewModel.selectAppDetail(pkg) },
+                        onRefresh = { viewModel.refreshHealthAndUsage() }
+                    )
+                }
 
-        ScreenDestination.APP_SELECTION -> {
-            AppSelectionScreen(
-                discoveredApps = discoveredApps,
-                existingBudgets = budgets,
-                isLoading = isDiscoveringApps,
-                onSaveSelectedApps = { selected -> viewModel.saveSelectedApps(selected) },
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
-        }
+                ScreenDestination.APP_SELECTION -> {
+                    AppSelectionScreen(
+                        discoveredApps = discoveredApps,
+                        existingBudgets = budgets,
+                        isLoading = isDiscoveringApps,
+                        userPreferences = userPrefs,
+                        onRecordFailedAttempt = { viewModel.recordFailedAttempt() },
+                        onResetFailedAttempts = { viewModel.resetFailedAttempts() },
+                        onSaveSelectedApps = { selected -> viewModel.saveSelectedApps(selected) },
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
 
-        ScreenDestination.APP_DETAIL_SETTINGS -> {
-            val selectedBudget = budgets.find { it.packageName == selectedAppPackage }
-                ?: AppBudget(selectedAppPackage ?: "", selectedAppPackage ?: "App")
+                ScreenDestination.APP_DETAIL_SETTINGS -> {
+                    val selectedBudget = budgets.find { it.packageName == selectedAppPackage }
+                        ?: AppBudget(selectedAppPackage ?: "", selectedAppPackage ?: "App")
 
-            AppDetailSettingsScreen(
-                budget = selectedBudget,
-                onSaveBudget = { updated -> viewModel.saveBudgetDetail(updated) },
-                onDeleteBudget = { pkg -> viewModel.deleteBudget(pkg) },
-                onPauseApp = { pkg, mins -> viewModel.pauseApp(pkg, mins) },
-                onResumeApp = { pkg -> viewModel.resumeApp(pkg) },
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
-        }
+                    AppDetailSettingsScreen(
+                        budget = selectedBudget,
+                        userPreferences = userPrefs,
+                        onSaveBudget = { updated -> viewModel.saveBudgetDetail(updated) },
+                        onDeleteBudget = { pkg -> viewModel.deleteBudget(pkg) },
+                        onPauseApp = { pkg, mins -> viewModel.pauseApp(pkg, mins) },
+                        onResumeApp = { pkg -> viewModel.resumeApp(pkg) },
+                        onRecordFailedAttempt = { viewModel.recordFailedAttempt() },
+                        onResetFailedAttempts = { viewModel.resetFailedAttempts() },
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
 
-        ScreenDestination.BUDGET_SETTINGS -> {
-            BudgetSettingsScreen(
-                budgets = budgets,
-                userPreferences = userPrefs,
-                onUpdateLimit = { pkg, limit -> viewModel.updateBudgetLimit(pkg, limit) },
-                onUpdateLockMode = { pkg, mode -> viewModel.updateLockMode(pkg, mode) },
-                onToggleAppEnabled = { pkg, enabled -> viewModel.toggleAppEnabled(pkg, enabled) },
-                onToggleStrictModeProtection = { enabled -> viewModel.setStrictModeProtection(enabled) },
-                onToggleNotifications = { enabled -> viewModel.setNotificationsEnabled(enabled) },
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
-        }
+                ScreenDestination.BUDGET_SETTINGS -> {
+                    BudgetSettingsScreen(
+                        budgets = budgets,
+                        userPreferences = userPrefs,
+                        onUpdateLimit = { pkg, limit -> viewModel.updateBudgetLimit(pkg, limit) },
+                        onUpdateLockMode = { pkg, mode -> viewModel.updateLockMode(pkg, mode) },
+                        onToggleAppEnabled = { pkg, enabled -> viewModel.toggleAppEnabled(pkg, enabled) },
+                        onToggleStrictModeProtection = { enabled -> viewModel.setStrictModeProtection(enabled) },
+                        onToggleNotifications = { enabled -> viewModel.setNotificationsEnabled(enabled) },
+                        onSetPin = { hash, salt -> viewModel.setPin(hash, salt) },
+                        onRemovePin = { viewModel.removePin() },
+                        onUpdateSecurityControl = { disableMon, changeLimits, removeApps, resetUsage, changeSecurity ->
+                            viewModel.updateSecurityControl(disableMon, changeLimits, removeApps, resetUsage, changeSecurity)
+                        },
+                        onRecordFailedAttempt = { viewModel.recordFailedAttempt() },
+                        onResetFailedAttempts = { viewModel.resetFailedAttempts() },
+                        onUpdateRandomReset = { enabled, minH, maxH ->
+                            viewModel.updateRandomReset(enabled, minH, maxH)
+                        },
+                        onResetTodayUsage = { viewModel.resetTodayUsage() },
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
 
-        ScreenDestination.ANALYTICS -> {
-            AnalyticsScreen(
-                summaries = dailySummaries,
-                scrollCountsMap = scrollCountsMap,
-                screenTimesMap = screenTimesMap,
-                budgets = budgets,
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
-        }
+                ScreenDestination.ANALYTICS -> {
+                    AnalyticsScreen(
+                        summaries = dailySummaries,
+                        scrollCountsMap = scrollCountsMap,
+                        screenTimesMap = screenTimesMap,
+                        budgets = budgets,
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
 
-        ScreenDestination.MONITORING_HEALTH -> {
-            MonitoringHealthScreen(
-                health = health,
-                recentObservations = recentObs,
-                onRefreshHealth = { viewModel.refreshHealthAndUsage() },
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
-        }
+                ScreenDestination.MONITORING_HEALTH -> {
+                    MonitoringHealthScreen(
+                        health = health,
+                        recentObservations = recentObs,
+                        onRefreshHealth = { viewModel.refreshHealthAndUsage() },
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
 
-        ScreenDestination.PRIVACY -> {
-            PrivacyScreen(
-                auditLogs = auditLogs,
-                onClearAllData = { viewModel.clearAllData() },
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
-        }
+                ScreenDestination.PRIVACY -> {
+                    PrivacyScreen(
+                        auditLogs = auditLogs,
+                        userPreferences = userPrefs,
+                        health = health,
+                        onToggleNotifications = { viewModel.setNotificationsEnabled(it) },
+                        onNavigateToHealth = { viewModel.navigateTo(ScreenDestination.MONITORING_HEALTH) },
+                        onRecordFailedAttempt = { viewModel.recordFailedAttempt() },
+                        onResetFailedAttempts = { viewModel.resetFailedAttempts() },
+                        onClearAllData = { viewModel.clearAllData() },
+                        onResetTodayUsage = { viewModel.resetTodayUsage() },
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
 
-        ScreenDestination.FEASIBILITY_SPIKE -> {
-            FeasibilitySpikeScreen(
-                isSpikeRunning = isSpikeRunning,
-                lastSpikeResults = spikeResults,
-                savedSpikeRecords = savedSpikeRecords,
-                onRunSpike = { viewModel.runFeasibilitySpike() },
-                onSimulateGesture = { pkg -> viewModel.simulateGesture(pkg) },
-                onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
-            )
+                ScreenDestination.FEASIBILITY_SPIKE -> {
+                    FeasibilitySpikeScreen(
+                        isSpikeRunning = isSpikeRunning,
+                        lastSpikeResults = spikeResults,
+                        savedSpikeRecords = savedSpikeRecords,
+                        onRunSpike = { viewModel.runFeasibilitySpike() },
+                        onSimulateGesture = { pkg -> viewModel.simulateGesture(pkg) },
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                    )
+                }
+            }
         }
     }
 }
