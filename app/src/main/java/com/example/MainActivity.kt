@@ -220,6 +220,7 @@ fun ScrollLockApp(viewModel: MainViewModel) {
                     BudgetSettingsScreen(
                         budgets = budgets,
                         userPreferences = userPrefs,
+                        health = health,
                         onUpdateLimit = { pkg, limit -> viewModel.updateBudgetLimit(pkg, limit) },
                         onUpdateLockMode = { pkg, mode -> viewModel.updateLockMode(pkg, mode) },
                         onToggleAppEnabled = { pkg, enabled -> viewModel.toggleAppEnabled(pkg, enabled) },
@@ -236,7 +237,24 @@ fun ScrollLockApp(viewModel: MainViewModel) {
                             viewModel.updateRandomReset(enabled, minH, maxH)
                         },
                         onResetTodayUsage = { viewModel.resetTodayUsage() },
-                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
+                        onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) },
+                        onSetDefaultLimits = { scroll, time -> viewModel.setDefaultLimits(scroll, time) },
+                        onSetLimitReachedAction = { action -> viewModel.setLimitReachedAction(action) },
+                        onSetEmergencyGraceSettings = { mins, avail -> viewModel.setEmergencyGraceSettings(mins, avail) },
+                        onSetSleepSchedule = { en, start, end -> viewModel.setSleepSchedule(en, start, end) },
+                        onSetWorkStudySchedule = { en, start, end, days -> viewModel.setWorkStudySchedule(en, start, end, days) },
+                        onStartFocusSession = { mins -> viewModel.startFocusSession(mins) },
+                        onCancelFocusSession = { viewModel.cancelFocusSession() },
+                        onPauseProtection = { mins -> viewModel.pauseProtection(mins) },
+                        onResumeProtection = { viewModel.resumeProtection() },
+                        onUpdateNotificationPreferences = { a80, a100, ds, br, brm, str, qh, qs, qe ->
+                            viewModel.updateNotificationPreferences(a80, a100, ds, br, brm, str, qh, qs, qe)
+                        },
+                        onUpdateAppearancePreferences = { theme, lang, font, hap, comp ->
+                            viewModel.updateAppearancePreferences(theme, lang, font, hap, comp)
+                        },
+                        onSetAppLockEnabled = { viewModel.setAppLockEnabled(it) },
+                        onClearAllData = { viewModel.clearAllData() }
                     )
                 }
 

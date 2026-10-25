@@ -1,7 +1,12 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,38 +22,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,15 +47,33 @@ import androidx.compose.ui.unit.sp
 import com.example.data.repository.UserPreferences
 import com.example.domain.model.AppBudget
 import com.example.domain.model.LockMode
+import com.example.domain.model.MonitoringHealthInfo
 import com.example.ui.components.ChangePinDialog
 import com.example.ui.components.RemovePinDialog
 import com.example.ui.components.SetPinDialog
-import com.example.ui.components.SettingsSection
 import com.example.ui.components.VerifyPinDialog
+import com.example.ui.screens.settings.SettingsAboutSection
+import com.example.ui.screens.settings.SettingsAppearanceSection
+import com.example.ui.screens.settings.SettingsLimitsSection
+import com.example.ui.screens.settings.SettingsNotificationsSection
+import com.example.ui.screens.settings.SettingsPermissionsSection
+import com.example.ui.screens.settings.SettingsPrivacySection
+import com.example.ui.screens.settings.SettingsSchedulesSection
+import com.example.ui.theme.MainBackground
 import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.WellbeingRestriction
-import com.example.ui.theme.WellbeingSuccess
-import com.example.ui.theme.WellbeingWarning
+import com.example.ui.theme.PrimaryText
+import com.example.ui.theme.SecondaryText
+
+enum class SettingsCategoryTab(val label: String, val testTag: String) {
+    ALL("All", "settings_category_all"),
+    LIMITS("Limits & Protection", "settings_category_limits"),
+    SCHEDULES("Schedules & Focus", "settings_category_schedules"),
+    NOTIFICATIONS("Notifications", "settings_category_notifications"),
+    APPEARANCE("Appearance", "settings_category_appearance"),
+    PERMISSIONS("Permissions", "settings_category_permissions"),
+    PRIVACY("Privacy & Data", "settings_category_privacy"),
+    ABOUT("About & Support", "settings_category_about")
+}
 
 @Composable
 fun BudgetSettingsScreen(
@@ -89,13 +98,44 @@ fun BudgetSettingsScreen(
     onUpdateRandomReset: (enabled: Boolean, minHours: Int, maxHours: Int) -> Unit,
     onResetTodayUsage: () -> Unit = {},
     onNavigateBack: () -> Unit,
+    health: MonitoringHealthInfo? = null,
+    onSetDefaultLimits: (scrollBudget: Int, timeMinutes: Int) -> Unit = { _, _ -> },
+    onSetLimitReachedAction: (action: String) -> Unit = {},
+    onSetEmergencyGraceSettings: (graceMinutes: Int, overrideAvailable: Boolean) -> Unit = { _, _ -> },
+    onSetSleepSchedule: (enabled: Boolean, start: String, end: String) -> Unit = { _, _, _ -> },
+    onSetWorkStudySchedule: (enabled: Boolean, start: String, end: String, days: String) -> Unit = { _, _, _, _ -> },
+    onStartFocusSession: (durationMinutes: Int) -> Unit = {},
+    onCancelFocusSession: () -> Unit = {},
+    onPauseProtection: (durationMinutes: Int) -> Unit = {},
+    onResumeProtection: () -> Unit = {},
+    onUpdateNotificationPreferences: (
+        alert80: Boolean?,
+        alert100: Boolean?,
+        dailySummary: Boolean?,
+        breakReminder: Boolean?,
+        breakMinutes: Int?,
+        streak: Boolean?,
+        quietHours: Boolean?,
+        quietStart: String?,
+        quietEnd: String?
+    ) -> Unit = { _, _, _, _, _, _, _, _, _ -> },
+    onUpdateAppearancePreferences: (
+        theme: String?,
+        language: String?,
+        fontScale: String?,
+        haptic: Boolean?,
+        compactCards: Boolean?
+    ) -> Unit = { _, _, _, _, _ -> },
+    onSetAppLockEnabled: (Boolean) -> Unit = {},
+    onClearAllData: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var selectedTab by remember { mutableStateOf(SettingsCategoryTab.ALL) }
+
+    // PIN Dialog States
     var showSetPinDialog by remember { mutableStateOf(false) }
     var showChangePinDialog by remember { mutableStateOf(false) }
     var showRemovePinDialog by remember { mutableStateOf(false) }
-
-    // Protected action interceptor state
     var showVerifyPinDialog by remember { mutableStateOf(false) }
     var pendingProtectedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -108,783 +148,231 @@ fun BudgetSettingsScreen(
         }
     }
 
-    LazyColumn(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .background(MainBackground)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onNavigateBack,
-                    modifier = Modifier.testTag("budget_settings_back_button")
-                ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back to Dashboard")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "App Budget Settings",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-        }
-
-        // ==========================================
-        // FEATURE 1: 4-DIGIT PIN SECURITY SECTION
-        // ==========================================
-        item {
-            SettingsSection(title = "SECURITY") {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .background(PrimaryBlue.copy(alpha = 0.15f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = if (userPreferences.isPinSet) Icons.Default.Lock else Icons.Default.LockOpen,
-                                        contentDescription = null,
-                                        tint = if (userPreferences.isPinSet) WellbeingSuccess else PrimaryBlue,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "🔒 App Protection",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "PIN Status: ${if (userPreferences.isPinSet) "PIN Protected" else "Not Set"}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = if (userPreferences.isPinSet) WellbeingSuccess else WellbeingWarning
-                                    )
-                                }
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (userPreferences.isPinSet) WellbeingSuccess.copy(alpha = 0.15f) else WellbeingWarning.copy(alpha = 0.15f)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    if (userPreferences.isPinSet) {
-                                        Icon(
-                                            Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = WellbeingSuccess,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
-                                    Text(
-                                        text = if (userPreferences.isPinSet) "PIN Protected" else "Not Set",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (userPreferences.isPinSet) WellbeingSuccess else WellbeingWarning
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // PIN Action Buttons
-                        if (!userPreferences.isPinSet) {
-                            Button(
-                                onClick = { showSetPinDialog = true },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                                    .testTag("set_pin_button"),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-                            ) {
-                                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Set PIN", fontWeight = FontWeight.SemiBold)
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = { showChangePinDialog = true },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp)
-                                        .testTag("change_pin_button"),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text("Change PIN", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                }
-
-                                OutlinedButton(
-                                    onClick = { showRemovePinDialog = true },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp)
-                                        .testTag("remove_pin_button"),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = WellbeingRestriction)
-                                ) {
-                                    Text("Remove PIN", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Security Controls
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "Security Controls",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            item {
                 Spacer(modifier = Modifier.height(6.dp))
-
-                SecurityControlRow(
-                    title = "Require PIN to disable monitoring",
-                    subtitle = "Protects against disabling monitoring or pausing restrictions",
-                    isChecked = userPreferences.pinRequireDisableMonitoring,
-                    isEnabled = userPreferences.isPinSet,
-                    onCheckedChange = { checked ->
-                        executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                            onUpdateSecurityControl(checked, null, null, null, null)
-                        }
-                    },
-                    testTag = "sec_control_disable_mon"
-                )
-
-                SecurityControlRow(
-                    title = "Require PIN to change app limits",
-                    subtitle = "Protects daily scroll quotas, screen time, and app launch budgets",
-                    isChecked = userPreferences.pinRequireChangeLimits,
-                    isEnabled = userPreferences.isPinSet,
-                    onCheckedChange = { checked ->
-                        executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                            onUpdateSecurityControl(null, checked, null, null, null)
-                        }
-                    },
-                    testTag = "sec_control_change_limits"
-                )
-
-                SecurityControlRow(
-                    title = "Require PIN to remove restricted apps",
-                    subtitle = "Prevents deleting or unselecting apps from the monitored list",
-                    isChecked = userPreferences.pinRequireRemoveApps,
-                    isEnabled = userPreferences.isPinSet,
-                    onCheckedChange = { checked ->
-                        executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                            onUpdateSecurityControl(null, null, checked, null, null)
-                        }
-                    },
-                    testTag = "sec_control_remove_apps"
-                )
-
-                SecurityControlRow(
-                    title = "Require PIN to reset usage",
-                    subtitle = "Protects today's usage statistics and database history erasure",
-                    isChecked = userPreferences.pinRequireResetUsage,
-                    isEnabled = userPreferences.isPinSet,
-                    onCheckedChange = { checked ->
-                        executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                            onUpdateSecurityControl(null, null, null, checked, null)
-                        }
-                    },
-                    testTag = "sec_control_reset_usage"
-                )
-
-                SecurityControlRow(
-                    title = "Require PIN to change security settings",
-                    subtitle = "Protects random reset delays and security toggle modifications",
-                    isChecked = userPreferences.pinRequireChangeSecurity,
-                    isEnabled = userPreferences.isPinSet,
-                    onCheckedChange = { checked ->
-                        executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                            onUpdateSecurityControl(null, null, null, null, checked)
-                        }
-                    },
-                    testTag = "sec_control_change_security"
-                )
-            }
-        }
-
-        // ==========================================
-        // FEATURE 2: RANDOM RESET SYSTEM SECTION
-        // ==========================================
-        item {
-            SettingsSection(title = "RANDOM RESET SYSTEM") {
-                Card(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.testTag("budget_settings_back_button")
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .background(PrimaryBlue.copy(alpha = 0.15f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Casino,
-                                        contentDescription = null,
-                                        tint = PrimaryBlue,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "🎲 Random Reset Protection",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = if (userPreferences.randomResetEnabled) "Unpredictable lock duration" else "Fixed midnight reset",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Switch(
-                                checked = userPreferences.randomResetEnabled,
-                                onCheckedChange = { enabled ->
-                                    executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                                        onUpdateRandomReset(
-                                            enabled,
-                                            userPreferences.randomResetMinHours,
-                                            userPreferences.randomResetMaxHours
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.testTag("toggle_random_reset")
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
-                            text = "Prevents compulsive bingeing by generating a randomized delay each time an app's limit is exhausted, rather than letting you anticipate a fixed midnight reset.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 18.sp
-                        )
-
-                        if (userPreferences.randomResetEnabled) {
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(PrimaryBlue.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
-                                    .padding(10.dp)
-                            ) {
-                                Text(
-                                    text = "Current Range: ${userPreferences.randomResetMinHours}h to ${userPreferences.randomResetMaxHours}h (independent per lock)",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PrimaryBlue
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Minimum Reset Delay Selector
-                            Text(
-                                text = "Minimum Reset Delay: ${userPreferences.randomResetMinHours} hours",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                listOf(1, 2, 3, 4, 5, 6).forEach { h ->
-                                    FilterChip(
-                                        selected = userPreferences.randomResetMinHours == h,
-                                        onClick = {
-                                            executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                                                onUpdateRandomReset(
-                                                    userPreferences.randomResetEnabled,
-                                                    h,
-                                                    maxOf(h, userPreferences.randomResetMaxHours)
-                                                )
-                                            }
-                                        },
-                                        label = { Text("${h}h") },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = PrimaryBlue,
-                                            selectedLabelColor = MaterialTheme.colorScheme.surface
-                                        ),
-                                        modifier = Modifier.testTag("random_min_${h}h")
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Maximum Reset Delay Selector
-                            Text(
-                                text = "Maximum Reset Delay: ${userPreferences.randomResetMaxHours} hours",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                listOf(3, 4, 5, 6, 8, 10).forEach { h ->
-                                    FilterChip(
-                                        selected = userPreferences.randomResetMaxHours == h,
-                                        onClick = {
-                                            executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                                                onUpdateRandomReset(
-                                                    userPreferences.randomResetEnabled,
-                                                    minOf(userPreferences.randomResetMinHours, h),
-                                                    h
-                                                )
-                                            }
-                                        },
-                                        label = { Text("${h}h") },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = PrimaryBlue,
-                                            selectedLabelColor = MaterialTheme.colorScheme.surface
-                                        ),
-                                        modifier = Modifier.testTag("random_max_${h}h")
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ==========================================
-        // MONITORED APPS CONFIGURATION SECTIONS
-        // ==========================================
-        items(budgets.size) { index ->
-            val budget = budgets[index]
-            AppBudgetConfigSection(
-                budget = budget,
-                onUpdateLimit = { newLimit ->
-                    executeWithPinCheck(userPreferences.pinRequireChangeLimits) {
-                        onUpdateLimit(budget.packageName, newLimit)
-                    }
-                },
-                onUpdateLockMode = { newMode ->
-                    executeWithPinCheck(userPreferences.pinRequireChangeLimits) {
-                        onUpdateLockMode(budget.packageName, newMode)
-                    }
-                },
-                onToggleEnabled = { enabled ->
-                    // Protected if disabling monitoring
-                    val requirePin = !enabled && userPreferences.pinRequireDisableMonitoring
-                    executeWithPinCheck(requirePin) {
-                        onToggleAppEnabled(budget.packageName, enabled)
-                    }
-                }
-            )
-        }
-
-        // Global Safeguards & Preferences
-        item {
-            SettingsSection(title = "Safeguards & Reset Policy") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Strict Mode Protection",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Enforces a 15-minute cool-down pause before allowing manual limit increases after exhaustion.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back to Dashboard",
+                            tint = PrimaryText
                         )
                     }
-                    Switch(
-                        checked = userPreferences.strictModeProtection,
-                        onCheckedChange = { enabled ->
-                            executeWithPinCheck(userPreferences.pinRequireChangeSecurity) {
-                                onToggleStrictModeProtection(enabled)
-                            }
-                        },
-                        modifier = Modifier.testTag("toggle_strict_mode")
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Budget Exhaustion Alerts",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Receive proactive push alerts when approaching or reaching quota.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = userPreferences.notificationsEnabled,
-                        onCheckedChange = onToggleNotifications,
-                        modifier = Modifier.testTag("toggle_notifications")
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                        .padding(14.dp)
-                ) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text(
-                            text = "Daily Reset Policy",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "Settings",
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = PrimaryText
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (userPreferences.randomResetEnabled) {
-                                "Random Reset Protection is active. Monitored app restrictions generate an unpredictable cooldown between ${userPreferences.randomResetMinHours}h and ${userPreferences.randomResetMaxHours}h once limits are reached."
-                            } else {
-                                "Every day at 12:00 AM local midnight, observed usage and scroll counts reconcile into historical analytics and your allowance resets to full."
-                            },
+                            text = "Limits, Schedules, Privacy & Personalization",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = SecondaryText
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        executeWithPinCheck(userPreferences.pinRequireResetUsage) {
-                            onResetTodayUsage()
-                        }
-                    },
+            // Top Horizontal Scrollable Category Filter Chips
+            item {
+                val scrollState = rememberScrollState()
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
-                        .testTag("reset_today_usage_button"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryBlue)
-                ) {
-                    Text("Reset Today's Usage Allowance", fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-    }
-
-    // ==========================================
-    // PIN SECURITY DIALOGS
-    // ==========================================
-    if (showSetPinDialog) {
-        SetPinDialog(
-            onPinCreated = { hash, salt ->
-                onSetPin(hash, salt)
-            },
-            onDismiss = { showSetPinDialog = false }
-        )
-    }
-
-    if (showChangePinDialog) {
-        ChangePinDialog(
-            userPreferences = userPreferences,
-            onPinChanged = { hash, salt ->
-                onSetPin(hash, salt)
-            },
-            onRecordFailedAttempt = onRecordFailedAttempt,
-            onResetFailedAttempts = onResetFailedAttempts,
-            onDismiss = { showChangePinDialog = false }
-        )
-    }
-
-    if (showRemovePinDialog) {
-        RemovePinDialog(
-            userPreferences = userPreferences,
-            onPinRemoved = onRemovePin,
-            onRecordFailedAttempt = onRecordFailedAttempt,
-            onResetFailedAttempts = onResetFailedAttempts,
-            onDismiss = { showRemovePinDialog = false }
-        )
-    }
-
-    if (showVerifyPinDialog) {
-        VerifyPinDialog(
-            userPreferences = userPreferences,
-            onSuccess = {
-                val action = pendingProtectedAction
-                pendingProtectedAction = null
-                action?.invoke()
-            },
-            onDismiss = {
-                showVerifyPinDialog = false
-                pendingProtectedAction = null
-            },
-            onRecordFailedAttempt = onRecordFailedAttempt,
-            onResetFailedAttempts = onResetFailedAttempts
-        )
-    }
-}
-
-@Composable
-private fun SecurityControlRow(
-    title: String,
-    subtitle: String,
-    isChecked: Boolean,
-    isEnabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    testTag: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isEnabled) 1f else 0.5f)
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Switch(
-            checked = isChecked,
-            onCheckedChange = onCheckedChange,
-            enabled = isEnabled,
-            modifier = Modifier.testTag(testTag)
-        )
-    }
-}
-
-@Composable
-private fun AppBudgetConfigSection(
-    budget: AppBudget,
-    onUpdateLimit: (Int) -> Unit,
-    onUpdateLockMode: (LockMode) -> Unit,
-    onToggleEnabled: (Boolean) -> Unit
-) {
-    val presets = listOf(25, 50, 100, 150, 200)
-
-    SettingsSection(title = "${budget.displayName} (${budget.category})") {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "Enable Monitoring",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (budget.isEnabled) "Actively enforcing limits" else "Monitoring paused",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = budget.isEnabled,
-                onCheckedChange = onToggleEnabled,
-                modifier = Modifier.testTag("toggle_enabled_${budget.packageName}")
-            )
-        }
-
-        if (budget.isEnabled) {
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Limits overview
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (budget.screenTimeLimitMinutes > 0) {
-                    Text(
-                        text = "Time Limit: ${budget.screenTimeLimitMinutes}m",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
-                    )
-                }
-                if (budget.scrollCountingSupported && budget.dailyLimit > 0) {
-                    Text(
-                        text = "Scroll Quota: ${budget.dailyLimit}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue
-                    )
-                }
-            }
-
-            if (budget.scrollCountingSupported) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Quick Adjust Scroll Budget: ${budget.dailyLimit} scrolls",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Quick preset pills
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
+                        .horizontalScroll(scrollState),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    presets.forEach { preset ->
+                    SettingsCategoryTab.values().forEach { tab ->
+                        val isSelected = selectedTab == tab
                         FilterChip(
-                            selected = budget.dailyLimit == preset,
-                            onClick = {
-                                onUpdateLimit(preset)
+                            selected = isSelected,
+                            onClick = { selectedTab = tab },
+                            label = {
+                                Text(
+                                    text = tab.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
                             },
-                            label = { Text("$preset") },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = PrimaryBlue,
-                                selectedLabelColor = MaterialTheme.colorScheme.surface
-                            )
+                                selectedLabelColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.testTag(tab.testTag)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            // SECTION 1: LIMITS & PROTECTION
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.LIMITS) {
+                item {
+                    SettingsLimitsSection(
+                        budgets = budgets,
+                        userPreferences = userPreferences,
+                        onUpdateLimit = onUpdateLimit,
+                        onUpdateLockMode = onUpdateLockMode,
+                        onToggleAppEnabled = onToggleAppEnabled,
+                        onToggleStrictModeProtection = onToggleStrictModeProtection,
+                        onSetDefaultLimits = onSetDefaultLimits,
+                        onSetLimitReachedAction = onSetLimitReachedAction,
+                        onSetEmergencyGraceSettings = onSetEmergencyGraceSettings,
+                        onOpenSetPin = { showSetPinDialog = true },
+                        onOpenChangePin = { showChangePinDialog = true },
+                        onOpenRemovePin = { showRemovePinDialog = true },
+                        onUpdateSecurityControl = onUpdateSecurityControl,
+                        onUpdateRandomReset = onUpdateRandomReset,
+                        executeWithPinCheck = ::executeWithPinCheck
+                    )
+                }
+            }
 
-            Text(
-                text = "Lock & Enforcement Mode",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
+            // SECTION 2: SCHEDULES & FOCUS
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.SCHEDULES) {
+                item {
+                    SettingsSchedulesSection(
+                        userPreferences = userPreferences,
+                        onSetSleepSchedule = onSetSleepSchedule,
+                        onSetWorkStudySchedule = onSetWorkStudySchedule,
+                        onStartFocusSession = onStartFocusSession,
+                        onCancelFocusSession = onCancelFocusSession,
+                        onPauseProtection = onPauseProtection,
+                        onResumeProtection = onResumeProtection,
+                        executeWithPinCheck = ::executeWithPinCheck
+                    )
+                }
+            }
 
-            LockModeOption(
-                mode = LockMode.GENTLE,
-                isSelected = budget.lockMode == LockMode.GENTLE,
-                onSelect = { onUpdateLockMode(LockMode.GENTLE) }
-            )
+            // SECTION 3: NOTIFICATIONS & REMINDERS
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.NOTIFICATIONS) {
+                item {
+                    SettingsNotificationsSection(
+                        userPreferences = userPreferences,
+                        onUpdateNotificationPreferences = onUpdateNotificationPreferences
+                    )
+                }
+            }
 
-            LockModeOption(
-                mode = LockMode.STANDARD,
-                isSelected = budget.lockMode == LockMode.STANDARD,
-                onSelect = { onUpdateLockMode(LockMode.STANDARD) }
-            )
+            // SECTION 4: APPEARANCE & PERSONALIZATION
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.APPEARANCE) {
+                item {
+                    SettingsAppearanceSection(
+                        userPreferences = userPreferences,
+                        onUpdateAppearancePreferences = onUpdateAppearancePreferences
+                    )
+                }
+            }
 
-            LockModeOption(
-                mode = LockMode.STRICT,
-                isSelected = budget.lockMode == LockMode.STRICT,
-                onSelect = { onUpdateLockMode(LockMode.STRICT) }
+            // SECTION 5: PERMISSIONS & PROTECTION STATUS
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.PERMISSIONS) {
+                item {
+                    SettingsPermissionsSection(
+                        health = health
+                    )
+                }
+            }
+
+            // SECTION 6: PRIVACY, DATA & ACCOUNT
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.PRIVACY) {
+                item {
+                    SettingsPrivacySection(
+                        userPreferences = userPreferences,
+                        onResetTodayUsage = onResetTodayUsage,
+                        onClearAllData = onClearAllData,
+                        onSetAppLockEnabled = onSetAppLockEnabled,
+                        executeWithPinCheck = ::executeWithPinCheck
+                    )
+                }
+            }
+
+            // SECTION 7: ABOUT & SUPPORT
+            if (selectedTab == SettingsCategoryTab.ALL || selectedTab == SettingsCategoryTab.ABOUT) {
+                item {
+                    SettingsAboutSection()
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(28.dp))
+            }
+        }
+
+        // Dialog 1: Set PIN Dialog
+        if (showSetPinDialog) {
+            SetPinDialog(
+                onDismiss = { showSetPinDialog = false },
+                onPinCreated = { pinHash: String, salt: String ->
+                    onSetPin(pinHash, salt)
+                    showSetPinDialog = false
+                }
             )
         }
-    }
-}
 
-@Composable
-private fun LockModeOption(
-    mode: LockMode,
-    isSelected: Boolean,
-    onSelect: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect() }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = isSelected,
-            onClick = onSelect
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            Text(
-                text = mode.label,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) PrimaryBlue else MaterialTheme.colorScheme.onSurface
+        // Dialog 2: Change PIN Dialog
+        if (showChangePinDialog) {
+            ChangePinDialog(
+                userPreferences = userPreferences,
+                onDismiss = { showChangePinDialog = false },
+                onPinChanged = { pinHash, salt ->
+                    onSetPin(pinHash, salt)
+                    showChangePinDialog = false
+                },
+                onRecordFailedAttempt = onRecordFailedAttempt,
+                onResetFailedAttempts = onResetFailedAttempts
             )
-            Text(
-                text = mode.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+        // Dialog 3: Remove PIN Dialog
+        if (showRemovePinDialog) {
+            RemovePinDialog(
+                userPreferences = userPreferences,
+                onDismiss = { showRemovePinDialog = false },
+                onPinRemoved = {
+                    onRemovePin()
+                    showRemovePinDialog = false
+                },
+                onRecordFailedAttempt = onRecordFailedAttempt,
+                onResetFailedAttempts = onResetFailedAttempts
+            )
+        }
+
+        // Dialog 4: Verify PIN Dialog
+        if (showVerifyPinDialog) {
+            VerifyPinDialog(
+                userPreferences = userPreferences,
+                onDismiss = {
+                    showVerifyPinDialog = false
+                    pendingProtectedAction = null
+                },
+                onSuccess = {
+                    showVerifyPinDialog = false
+                    pendingProtectedAction?.invoke()
+                    pendingProtectedAction = null
+                },
+                onRecordFailedAttempt = onRecordFailedAttempt,
+                onResetFailedAttempts = onResetFailedAttempts
             )
         }
     }

@@ -376,4 +376,98 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetFailedAttempts() = resetFailedPinAttempts()
     fun updateRandomReset(enabled: Boolean, minHours: Int, maxHours: Int) =
         setRandomResetSettings(enabled, minHours, maxHours)
+
+    // Settings Categories Helpers
+    fun setDefaultLimits(scrollBudget: Int, timeMinutes: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setDefaultLimits(scrollBudget, timeMinutes)
+        }
+    }
+
+    fun setLimitReachedAction(action: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLimitReachedAction(action)
+        }
+    }
+
+    fun setEmergencyGraceSettings(graceMinutes: Int, overrideAvailable: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setEmergencyGraceSettings(graceMinutes, overrideAvailable)
+        }
+    }
+
+    fun setSleepSchedule(enabled: Boolean, start: String, end: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSleepSchedule(enabled, start, end)
+        }
+    }
+
+    fun setWorkStudySchedule(enabled: Boolean, start: String, end: String, days: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setWorkStudySchedule(enabled, start, end, days)
+        }
+    }
+
+    fun startFocusSession(durationMinutes: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.startFocusSession(durationMinutes)
+            budgetRepository.recordAuditLog("USER", "FOCUS_SESSION", "Started ${durationMinutes}m focus session")
+        }
+    }
+
+    fun cancelFocusSession() {
+        viewModelScope.launch {
+            userPreferencesRepository.cancelFocusSession()
+        }
+    }
+
+    fun pauseProtection(durationMinutes: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.pauseProtection(durationMinutes)
+            budgetRepository.recordAuditLog("USER", "PAUSE_PROTECTION", "Paused protection for ${durationMinutes}m")
+        }
+    }
+
+    fun resumeProtection() {
+        viewModelScope.launch {
+            userPreferencesRepository.resumeProtection()
+            budgetRepository.recordAuditLog("USER", "RESUME_PROTECTION", "Protection resumed")
+        }
+    }
+
+    fun updateNotificationPreferences(
+        alert80: Boolean? = null,
+        alert100: Boolean? = null,
+        dailySummary: Boolean? = null,
+        breakReminder: Boolean? = null,
+        breakMinutes: Int? = null,
+        streak: Boolean? = null,
+        quietHours: Boolean? = null,
+        quietStart: String? = null,
+        quietEnd: String? = null
+    ) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateNotificationPreferences(
+                alert80, alert100, dailySummary, breakReminder, breakMinutes, streak, quietHours, quietStart, quietEnd
+            )
+        }
+    }
+
+    fun updateAppearancePreferences(
+        theme: String? = null,
+        language: String? = null,
+        fontScale: String? = null,
+        haptic: Boolean? = null,
+        compactCards: Boolean? = null
+    ) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAppearancePreferences(theme, language, fontScale, haptic, compactCards)
+        }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAppLockEnabled(enabled)
+        }
+    }
 }
