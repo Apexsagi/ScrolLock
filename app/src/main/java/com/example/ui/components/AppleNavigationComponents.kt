@@ -39,7 +39,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -104,8 +106,8 @@ fun ScreenLockBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavItem(
@@ -114,7 +116,8 @@ fun ScreenLockBottomBar(
                 selectedIcon = Icons.Filled.Home,
                 unselectedIcon = Icons.Outlined.Home,
                 onClick = { onNavigate(ScreenDestination.DASHBOARD) },
-                testTag = "nav_home"
+                testTag = "nav_home",
+                modifier = Modifier.weight(1f)
             )
 
             BottomNavItem(
@@ -123,7 +126,8 @@ fun ScreenLockBottomBar(
                 selectedIcon = Icons.Filled.BarChart,
                 unselectedIcon = Icons.Outlined.BarChart,
                 onClick = { onNavigate(ScreenDestination.ANALYTICS) },
-                testTag = "nav_stats"
+                testTag = "nav_stats",
+                modifier = Modifier.weight(1f)
             )
 
             BottomNavItem(
@@ -132,7 +136,8 @@ fun ScreenLockBottomBar(
                 selectedIcon = Icons.Filled.Shield,
                 unselectedIcon = Icons.Outlined.Shield,
                 onClick = { onNavigate(ScreenDestination.BUDGET_SETTINGS) },
-                testTag = "nav_rules"
+                testTag = "nav_rules",
+                modifier = Modifier.weight(1f)
             )
 
             BottomNavItem(
@@ -141,7 +146,8 @@ fun ScreenLockBottomBar(
                 selectedIcon = Icons.Filled.Person,
                 unselectedIcon = Icons.Outlined.Person,
                 onClick = { onNavigate(ScreenDestination.PRIVACY) },
-                testTag = "nav_profile"
+                testTag = "nav_profile",
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -154,7 +160,8 @@ private fun BottomNavItem(
     selectedIcon: ImageVector,
     unselectedIcon: ImageVector,
     onClick: () -> Unit,
-    testTag: String
+    testTag: String,
+    modifier: Modifier = Modifier
 ) {
     val animatedColor by animateColorAsState(
         targetValue = if (selected) PrimaryBlue else MutedText,
@@ -171,14 +178,15 @@ private fun BottomNavItem(
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = ripple(bounded = true, color = PrimaryBlue.copy(alpha = 0.2f)),
                 onClick = onClick
             )
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(vertical = 4.dp, horizontal = 2.dp)
             .scale(scale)
             .testTag(testTag),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -186,7 +194,7 @@ private fun BottomNavItem(
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(34.dp)
                 .then(
                     if (selected) {
                         Modifier
@@ -202,7 +210,7 @@ private fun BottomNavItem(
                 imageVector = if (selected) selectedIcon else unselectedIcon,
                 contentDescription = label,
                 tint = animatedColor,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
 
@@ -210,10 +218,11 @@ private fun BottomNavItem(
 
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 10.5.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = animatedColor,
-            letterSpacing = 0.1.sp
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

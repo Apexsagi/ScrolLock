@@ -36,6 +36,7 @@ import com.example.ui.screens.MonitoringHealthScreen
 import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.PrivacyScreen
 import com.example.ui.screens.WelcomeScreen
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import com.example.ui.components.ScreenLockBottomBar
@@ -118,7 +119,9 @@ fun ScrollLockApp(viewModel: MainViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (isMainTab) {

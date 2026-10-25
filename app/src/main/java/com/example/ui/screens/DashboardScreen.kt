@@ -12,16 +12,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -129,8 +139,8 @@ fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 116.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // A. Clean, Compact Apple Header
@@ -168,13 +178,18 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.weight(1f, fill = false),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = "Restricted Apps",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryText,
-                            fontSize = 17.sp
+                            fontSize = 17.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
@@ -193,9 +208,13 @@ fun DashboardScreen(
                         }
                     }
 
+                    Spacer(modifier = Modifier.width(8.dp))
+
                     TextButton(
                         onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
-                        modifier = Modifier.testTag("dashboard_add_app_text_button")
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("dashboard_add_app_text_button")
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = PrimaryBlue)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -223,42 +242,6 @@ fun DashboardScreen(
                         capabilityState = health.capabilityState,
                         onClick = { onSelectAppDetail(budget.packageName) }
                     )
-                }
-
-                // Inline secondary action card to add more apps
-                item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .border(1.dp, BorderColor.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
-                            .clickable { onNavigate(ScreenDestination.APP_SELECTION) },
-                        color = ElevatedCard.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(18.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = PrimaryBlue,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Add More Apps to Restrict",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = PrimaryBlue,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
                 }
             }
 
@@ -319,27 +302,61 @@ fun DashboardScreen(
                     )
                 }
             }
-
-            // Bottom clearance spacer: allows scrolling cards completely past the FAB!
-            item {
-                Spacer(modifier = Modifier.height(30.dp))
-            }
         }
 
-        // Floating Action Button: Pinned to bottom end with clear bottom padding
-        ExtendedFloatingActionButton(
-            onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
-            icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp)) },
-            text = { Text("Add / Manage Apps", fontWeight = FontWeight.SemiBold, fontSize = 13.sp) },
-            containerColor = PrimaryBlue,
-            contentColor = Color.White,
-            shape = RoundedCornerShape(24.dp),
+        // Dedicated Bottom Action Area above bottom navigation bar
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 16.dp)
-                .shadow(8.dp, RoundedCornerShape(24.dp))
-                .testTag("fab_add_apps")
-        )
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color.Transparent,
+                        0.25f to MainBackground.copy(alpha = 0.85f),
+                        0.55f to MainBackground.copy(alpha = 0.98f),
+                        1.0f to MainBackground
+                    )
+                )
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Button(
+                onClick = { onNavigate(ScreenDestination.APP_SELECTION) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(min = 200.dp, max = 420.dp)
+                    .heightIn(min = 48.dp)
+                    .minimumInteractiveComponentSize()
+                    .shadow(8.dp, RoundedCornerShape(24.dp))
+                    .testTag("fab_add_apps")
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "+ Add / Manage Apps"
+                    },
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryBlue,
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Add / Manage Apps",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 
@@ -358,7 +375,10 @@ private fun AppleHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -380,24 +400,30 @@ private fun AppleHeader(
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-            Column {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = "ScreenLock",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryText,
-                    fontSize = 20.sp
+                    fontSize = 20.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "Focus more. Live better.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SecondaryText,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
+
+        Spacer(modifier = Modifier.width(8.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -405,7 +431,8 @@ private fun AppleHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .minimumInteractiveComponentSize()
+                    .size(38.dp)
                     .clip(CircleShape)
                     .background(ElevatedCard)
                     .border(1.dp, BorderColor.copy(alpha = 0.7f), CircleShape)
@@ -423,7 +450,8 @@ private fun AppleHeader(
 
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .minimumInteractiveComponentSize()
+                    .size(38.dp)
                     .clip(CircleShape)
                     .background(ElevatedCard)
                     .border(1.dp, BorderColor.copy(alpha = 0.7f), CircleShape)
@@ -486,7 +514,7 @@ private fun AppleHealthBanner(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = "Permission Required",
                         style = MaterialTheme.typography.titleSmall,
@@ -512,7 +540,9 @@ private fun AppleHealthBanner(
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                modifier = Modifier.height(32.dp)
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 56.dp, minHeight = 36.dp)
+                    .minimumInteractiveComponentSize()
             ) {
                 Text("Fix", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
@@ -542,29 +572,51 @@ private fun AppleTodayUsageSummary(
         backgroundColor = CardBackground,
         shape = RoundedCornerShape(22.dp)
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(gradientBrush)
                 .padding(20.dp)
         ) {
+            val isNarrowCard = maxWidth < 280.dp
+            val isNarrowStats = maxWidth < 270.dp
             Column {
-                // Top Row: Title + Countdown badge
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "TODAY'S SCREEN TIME",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = SecondaryText,
-                        fontSize = 11.sp
-                    )
-
-                    AppleResetCountdownBadge()
+                // Top Row: Title + Countdown badge (wraps if narrow)
+                if (isNarrowCard) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "TODAY'S SCREEN TIME",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = SecondaryText,
+                            fontSize = 11.sp
+                        )
+                        AppleResetCountdownBadge()
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TODAY'S SCREEN TIME",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = SecondaryText,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1f, fill = false),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        AppleResetCountdownBadge()
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -575,7 +627,7 @@ private fun AppleTodayUsageSummary(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         val hours = screenTimeMinutes / 60
                         val mins = screenTimeMinutes % 60
                         val displayTime = when {
@@ -588,27 +640,32 @@ private fun AppleTodayUsageSummary(
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryText,
-                            fontSize = 36.sp
+                            fontSize = if (isNarrowCard) 30.sp else 36.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
 
                         Text(
                             text = if (screenTimeMinutes > 0) "Monitored across your restricted apps" else "No usage recorded yet today",
                             style = MaterialTheme.typography.bodySmall,
                             color = SecondaryText,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
                         )
                     }
 
+                    Spacer(modifier = Modifier.width(12.dp))
+
                     AppleCircularProgress(
                         progress = progress,
-                        size = 64.dp,
+                        size = if (isNarrowCard) 56.dp else 64.dp,
                         strokeWidth = 6.5.dp,
                         primaryColor = if (progress >= 1f) DangerRed else PrimaryBlue,
                         trackColor = BorderColor.copy(alpha = 0.45f)
                     ) {
                         Text(
                             text = "${(progress * 100).toInt()}%",
-                            fontSize = 12.sp,
+                            fontSize = if (isNarrowCard) 11.sp else 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryText
                         )
@@ -627,25 +684,48 @@ private fun AppleTodayUsageSummary(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    AppleStatPill(
-                        label = "Feed Scrolls",
-                        value = "$totalScrolls",
-                        icon = Icons.Default.SwapVert,
-                        tint = SuccessGreen,
-                        modifier = Modifier.weight(1f)
-                    )
+                // Reflow the statistic panels when there is insufficient horizontal space
+                if (isNarrowStats) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AppleStatPill(
+                            label = "Feed Scrolls",
+                            value = "$totalScrolls",
+                            icon = Icons.Default.SwapVert,
+                            tint = SuccessGreen,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        AppleStatPill(
+                            label = "App Opens",
+                            value = "$totalLaunches",
+                            icon = Icons.Default.TouchApp,
+                            tint = WarningAmber,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        AppleStatPill(
+                            label = "Feed Scrolls",
+                            value = "$totalScrolls",
+                            icon = Icons.Default.SwapVert,
+                            tint = SuccessGreen,
+                            modifier = Modifier.weight(1f)
+                        )
 
-                    AppleStatPill(
-                        label = "App Opens",
-                        value = "$totalLaunches",
-                        icon = Icons.Default.TouchApp,
-                        tint = WarningAmber,
-                        modifier = Modifier.weight(1f)
-                    )
+                        AppleStatPill(
+                            label = "App Opens",
+                            value = "$totalLaunches",
+                            icon = Icons.Default.TouchApp,
+                            tint = WarningAmber,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -687,19 +767,23 @@ private fun AppleStatPill(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Column {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = value,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryText,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
                     color = SecondaryText,
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -793,202 +877,279 @@ fun AppleRestrictedAppCard(
         backgroundColor = CardBackground,
         shape = RoundedCornerShape(20.dp)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // 1. Top Row: App Icon + Name + Category + Status Badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            val isNarrow = maxWidth < 260.dp
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 1. Top Row: App Icon + Name + Category + Status Badge
                 Row(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AppleAppIcon(
-                        packageName = budget.packageName,
-                        displayName = budget.displayName,
-                        size = 44.dp
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-                        Text(
-                            text = budget.displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryText,
-                            fontSize = 15.sp
-                        )
-                        Spacer(modifier = Modifier.height(1.dp))
-                        Text(
-                            text = "${budget.category} • ${budget.lockMode.name}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = SecondaryText,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-
-                // Compact Status Badge
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusColor.copy(alpha = 0.12f),
-                    border = androidx.compose.foundation.BorderStroke(0.5.dp, statusColor.copy(alpha = 0.35f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(5.dp)
-                                .clip(CircleShape)
-                                .background(statusColor)
+                        AppleAppIcon(
+                            packageName = budget.packageName,
+                            displayName = budget.displayName,
+                            size = 44.dp
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = statusBadgeText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = statusColor,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 10.5.sp
-                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = budget.displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryText,
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(1.dp))
+                            Text(
+                                text = "${budget.category} • ${budget.lockMode.name}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SecondaryText,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Compact Status Badge
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = statusColor.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, statusColor.copy(alpha = 0.35f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(statusColor)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = statusBadgeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = statusColor,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 10.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // 2. Middle Row: Screen Time Metric & Thin Progress Bar
-            if (budget.screenTimeLimitMinutes > 0) {
-                val timeProgress = (screenTimeMinutes.toFloat() / budget.screenTimeLimitMinutes.toFloat()).coerceIn(0f, 1f)
-                val remainingMins = maxOf(0, budget.screenTimeLimitMinutes - screenTimeMinutes)
+                // 2. Middle Row: Screen Time Metric & Thin Progress Bar
+                if (budget.screenTimeLimitMinutes > 0) {
+                    val timeProgress = (screenTimeMinutes.toFloat() / budget.screenTimeLimitMinutes.toFloat()).coerceIn(0f, 1f)
+                    val remainingMins = maxOf(0, budget.screenTimeLimitMinutes - screenTimeMinutes)
 
+                    if (isNarrow) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Screen Time: ${screenTimeMinutes}m",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PrimaryText,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${budget.screenTimeLimitMinutes}m limit • ${remainingMins}m left",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Normal,
+                                color = if (isTimeExhausted) DangerRed else SecondaryText,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Screen Time: ${screenTimeMinutes}m",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PrimaryText,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.5.sp,
+                                modifier = Modifier.weight(1f, fill = false),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${budget.screenTimeLimitMinutes}m limit • ${remainingMins}m left",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Normal,
+                                color = if (isTimeExhausted) DangerRed else SecondaryText,
+                                fontSize = 11.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { timeProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = if (isTimeExhausted) DangerRed else PrimaryBlue,
+                        trackColor = ElevatedCard
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                // Scroll Count Metric (if supported)
+                if (budget.scrollCountingSupported && budget.dailyLimit > 0) {
+                    val scrollProgress = (scrollCount.toFloat() / budget.dailyLimit.toFloat()).coerceIn(0f, 1f)
+                    val remainingScrolls = maxOf(0, budget.dailyLimit - scrollCount)
+
+                    if (isNarrow) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Feed Scrolls: $scrollCount",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PrimaryText,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${budget.dailyLimit} limit • $remainingScrolls left",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isScrollExhausted) DangerRed else SecondaryText,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Feed Scrolls: $scrollCount",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = PrimaryText,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.5.sp,
+                                modifier = Modifier.weight(1f, fill = false),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${budget.dailyLimit} limit • $remainingScrolls left",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isScrollExhausted) DangerRed else SecondaryText,
+                                fontSize = 11.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { scrollProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = if (isScrollExhausted) DangerRed else SuccessGreen,
+                        trackColor = ElevatedCard
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                // 3. Bottom Row: App opens or schedule + "Configure" action
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Screen Time: ${screenTimeMinutes}m",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = PrimaryText,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.5.sp
-                    )
-                    Text(
-                        text = "${budget.screenTimeLimitMinutes}m limit • ${remainingMins}m left",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Normal,
-                        color = if (isTimeExhausted) DangerRed else SecondaryText,
-                        fontSize = 11.5.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { timeProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = if (isTimeExhausted) DangerRed else PrimaryBlue,
-                    trackColor = ElevatedCard
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
+                    val statusMessage = when {
+                        budget.launchLimit > 0 -> "$launchesCount / ${budget.launchLimit} opens today"
+                        budget.lockResetTimestamp > System.currentTimeMillis() -> {
+                            val sdf = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+                            "🔒 Unlocks at ${sdf.format(Date(budget.lockResetTimestamp))}"
+                        }
+                        else -> "Resets tonight at midnight"
+                    }
+                    val statusColorMsg = when {
+                        budget.launchLimit > 0 -> if (isLaunchExhausted) DangerRed else SecondaryText
+                        budget.lockResetTimestamp > System.currentTimeMillis() -> WarningAmber
+                        else -> MutedText
+                    }
 
-            // Scroll Count Metric (if supported)
-            if (budget.scrollCountingSupported && budget.dailyLimit > 0) {
-                val scrollProgress = (scrollCount.toFloat() / budget.dailyLimit.toFloat()).coerceIn(0f, 1f)
-                val remainingScrolls = maxOf(0, budget.dailyLimit - scrollCount)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Text(
-                        text = "Feed Scrolls: $scrollCount",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = PrimaryText,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.5.sp
-                    )
-                    Text(
-                        text = "${budget.dailyLimit} limit • $remainingScrolls left",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isScrollExhausted) DangerRed else SecondaryText,
-                        fontSize = 11.5.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { scrollProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = if (isScrollExhausted) DangerRed else SuccessGreen,
-                    trackColor = ElevatedCard
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            // 3. Bottom Row: App opens or schedule + "Configure" action
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (budget.launchLimit > 0) {
-                    Text(
-                        text = "$launchesCount / ${budget.launchLimit} opens today",
+                        text = statusMessage,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isLaunchExhausted) DangerRed else SecondaryText,
-                        fontSize = 11.sp
+                        color = statusColorMsg,
+                        fontWeight = if (budget.lockResetTimestamp > System.currentTimeMillis()) FontWeight.SemiBold else FontWeight.Normal,
+                        fontSize = 11.sp,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                } else if (budget.lockResetTimestamp > System.currentTimeMillis()) {
-                    val sdf = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
-                    val unlockTime = sdf.format(Date(budget.lockResetTimestamp))
-                    Text(
-                        text = "🔒 Unlocks at $unlockTime",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WarningAmber,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp
-                    )
-                } else {
-                    Text(
-                        text = "Resets tonight at midnight",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MutedText,
-                        fontSize = 11.sp
-                    )
-                }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "Configure",
-                        fontSize = 12.sp,
-                        color = PrimaryBlue,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp),
-                        tint = PrimaryBlue
-                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clip(RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Configure",
+                            fontSize = 12.sp,
+                            color = PrimaryBlue,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp),
+                            tint = PrimaryBlue
+                        )
+                    }
                 }
             }
         }
@@ -1047,7 +1208,11 @@ private fun AppleEmptyRestrictedApps(onAddApps: () -> Unit) {
                 onClick = onAddApps,
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.height(42.dp)
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 44.dp)
+                    .heightIn(min = 42.dp)
+                    .minimumInteractiveComponentSize()
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
@@ -1066,7 +1231,9 @@ private fun AppleQuickNavCard(
     modifier: Modifier = Modifier
 ) {
     AppleCard(
-        modifier = modifier.testTag("quick_nav_${title.lowercase()}"),
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .testTag("quick_nav_${title.lowercase().replace(" ", "_")}"),
         onClick = onClick,
         backgroundColor = CardBackground,
         shape = RoundedCornerShape(18.dp)
@@ -1074,7 +1241,7 @@ private fun AppleQuickNavCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(14.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -1098,14 +1265,19 @@ private fun AppleQuickNavCard(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = PrimaryText,
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = SecondaryText,
-                fontSize = 11.sp
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 15.sp
             )
         }
     }
