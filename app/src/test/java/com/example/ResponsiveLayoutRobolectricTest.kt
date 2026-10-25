@@ -1,9 +1,15 @@
 package com.example
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import com.example.data.repository.UserPreferences
 import com.example.domain.model.AppBudget
 import com.example.domain.model.CapabilityState
 import com.example.domain.model.LockMode
@@ -11,6 +17,7 @@ import com.example.domain.model.MonitoringHealthInfo
 import com.example.ui.ScreenDestination
 import com.example.ui.components.ScreenLockBottomBar
 import com.example.ui.screens.DashboardScreen
+import com.example.ui.screens.settings.SettingsLimitsSection
 import com.example.ui.theme.ScrollLockTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -214,5 +221,61 @@ class ResponsiveLayoutRobolectricTest {
         }
 
         composeTestRule.onNodeWithTag("dashboard_health_banner").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h640dp-normal-port")
+    fun testAppCardPresetsAndCustomInputOnNarrowScreen() {
+        var updatedPkg: String? = null
+        var updatedLimit: Int? = null
+
+        composeTestRule.setContent {
+            ScrollLockTheme {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item {
+                        SettingsLimitsSection(
+                            budgets = sampleBudgets,
+                            userPreferences = UserPreferences(),
+                            onUpdateLimit = { pkg, limit ->
+                                updatedPkg = pkg
+                                updatedLimit = limit
+                            },
+                            onUpdateLockMode = { _, _ -> },
+                            onToggleAppEnabled = { _, _ -> },
+                            onToggleStrictModeProtection = {},
+                            onSetDefaultLimits = { _, _ -> },
+                            onSetLimitReachedAction = {},
+                            onSetEmergencyGraceSettings = { _, _ -> },
+                            onOpenSetPin = {},
+                            onOpenChangePin = {},
+                            onOpenRemovePin = {},
+                            onUpdateSecurityControl = { _, _, _, _, _ -> },
+                            onUpdateRandomReset = { _, _, _ -> },
+                            executeWithPinCheck = { _, action -> action() }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Verify Instagram toggle switch is displayed and accessible
+        composeTestRule.onNodeWithTag("toggle_app_com.instagram.android")
+            .performScrollTo()
+            .assertIsDisplayed()
+
+        // Verify Custom scroll input is displayed and accepts input
+        composeTestRule.onNodeWithTag("custom_scroll_input_com.instagram.android")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performTextInput("150")
+
+        // Verify Apply button is displayed and triggers limit update
+        composeTestRule.onNodeWithTag("apply_custom_scroll_com.instagram.android")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+
+        assertEquals("com.instagram.android", updatedPkg)
+        assertEquals(150, updatedLimit)
     }
 }
