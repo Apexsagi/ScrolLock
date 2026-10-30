@@ -135,13 +135,13 @@ fun WelcomeScreen(
                 Column(modifier = Modifier.padding(20.dp)) {
                     FeatureHighlightRow(
                         title = "Scroll Budgets, Not Just Timers",
-                        description = "Counting individual reel swipes addresses algorithm addiction directly.",
+                        description = "We detect when a new video appears, addressing algorithm addiction directly.",
                         icon = Icons.Default.Lock
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     FeatureHighlightRow(
                         title = "Honest, Verified Monitoring",
-                        description = "Zero fake statistics. We observe real gestures via accessibility events.",
+                        description = "Zero fake statistics. We detect when a new video appears via accessibility.",
                         icon = Icons.Default.Info
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -197,8 +197,8 @@ fun WelcomeScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("1. You choose a daily quota of reels for Instagram and shorts for YouTube (e.g. 50 scrolls).")
-                    Text("2. ScrollLock uses a narrowly scoped Android Accessibility Service to observe vertical feed scroll gestures when Instagram or YouTube is open.")
-                    Text("3. Each swipe is debounced so multi-frame flicks count as a single feed advance.")
+                    Text("2. ScrollLock uses a narrowly scoped Android Accessibility Service to detect when a new video appears when Instagram or YouTube is open.")
+                    Text("3. Each video is identified by signature so one video never counts twice.")
                     Text("4. When your quota is exhausted, ScrollLock activates your chosen enforcement mode (Gentle warning, Standard return-to-home, or Strict).")
                     Text("5. All data stays offline in your local database and resets automatically at midnight.")
                 }

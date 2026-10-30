@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">ScreenLock</string>
-    <string name="accessibility_service_label">ScreenLock Monitor &amp; Enforcer</string>
-    <string name="accessibility_service_description">ScreenLock monitors feed scrolls, screen time, and app usage across your chosen apps to enforce digital wellbeing limits.</string>
+    <string name="app_name">ScrollLock</string>
+    <string name="accessibility_service_label">ScrollLock Monitor &amp; Enforcer</string>
+    <string name="accessibility_service_description">ScrollLock monitors feed scrolls, screen time, and app usage across your chosen apps to enforce digital wellbeing limits.</string>
     <string name="welcome_headline">Take back your scroll.</string>
     <string name="welcome_subtitle">You decide how much to scroll and watch. When your limit is reached, ScrollLock helps you stop.</string>
     <string name="welcome_get_started">Get started</string>

@@ -15,7 +15,7 @@ import com.example.domain.model.CapabilityState
 import com.example.domain.model.LockMode
 import com.example.domain.model.MonitoringHealthInfo
 import com.example.ui.ScreenDestination
-import com.example.ui.components.ScreenLockBottomBar
+import com.example.ui.components.ScrollLockBottomBar
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.settings.SettingsLimitsSection
 import com.example.ui.theme.ScrollLockTheme
@@ -181,7 +181,7 @@ class ResponsiveLayoutRobolectricTest {
 
         composeTestRule.setContent {
             ScrollLockTheme {
-                ScreenLockBottomBar(
+                ScrollLockBottomBar(
                     currentDestination = ScreenDestination.DASHBOARD,
                     onNavigate = { dest -> selectedDest = dest }
                 )

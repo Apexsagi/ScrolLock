@@ -5,6 +5,7 @@ import com.example.domain.model.CapabilityState
 import com.example.domain.model.MonitoredAppInfo
 import com.example.domain.model.MonitoringHealthInfo
 import com.example.domain.model.ScrollObservation
+import com.example.domain.model.VideoDetectionDebugLogEntry
 import kotlinx.coroutines.flow.Flow
 
 interface ScrollMonitoringProvider {
@@ -16,4 +17,6 @@ interface ScrollMonitoringProvider {
     fun isAccessibilityServiceEnabled(context: Context): Boolean
     fun isUsageAccessEnabled(context: Context): Boolean
     fun isOverlayPermissionEnabled(context: Context): Boolean
+    val debugLogs: Flow<List<VideoDetectionDebugLogEntry>>
+    fun isTrackingApproximate(packageName: String): Boolean = false
 }

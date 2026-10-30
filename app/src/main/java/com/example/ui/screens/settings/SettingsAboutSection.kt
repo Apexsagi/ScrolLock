@@ -91,7 +91,7 @@ fun SettingsAboutSection(
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column {
-                        Text("ScreenLock", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PrimaryText)
+                        Text("ScrollLock", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PrimaryText)
                         Text("Version 1.4.2 • Build 2026", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
                     }
                 }
@@ -129,7 +129,7 @@ fun SettingsAboutSection(
                 ) {
                     Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("How ScreenLock Works & Detection Details")
+                    Text("How ScrollLock Works & Detection Details")
                 }
 
                 Box(
@@ -195,11 +195,11 @@ fun SettingsAboutSection(
     if (showHowItWorksDialog) {
         AlertDialog(
             onDismissRequest = { showHowItWorksDialog = false },
-            title = { Text("How ScreenLock Works", fontWeight = FontWeight.Bold) },
+            title = { Text("How ScrollLock Works", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Text(
-                        "1. Native Accessibility Node Inspection:\nScreenLock listens for VIEW_SCROLLED and WINDOW_STATE_CHANGED events emitted by Android's Accessibility framework.\n\n2. Swipe Velocity Heuristics:\nSwipe gestures in vertical pager carousels are classified using motion distance and timestamp intervals.\n\n3. Zero Server Reliance:\nAll observation tokens stay in device volatile memory and local SQLite database.",
+                        "1. Native Accessibility Video Inspection:\nScrollLock detects when a new video appears in vertical feeds and watches content signatures.\n\n2. Signature & Cooldown Verification:\nEach video is verified by signature with a 1-second cooldown so one video never counts twice.\n\n3. Zero Server Reliance:\nAll observation tokens stay in device volatile memory and local SQLite database.",
                         fontSize = 12.sp,
                         color = SecondaryText,
                         lineHeight = 18.sp
@@ -261,7 +261,7 @@ fun SettingsAboutSection(
             text = {
                 Column {
                     Text(
-                        "Privacy Policy:\nScreenLock does not collect, transmit, or monetize any personal information. All usage metrics and configuration parameters are maintained exclusively on your physical Android device.\n\nTerms of Service:\nScreenLock is provided as-is to assist users in regulating digital media consumption. Users may disable or uninstall the application at any time.",
+                        "Privacy Policy:\nScrollLock does not collect, transmit, or monetize any personal information. All usage metrics and configuration parameters are maintained exclusively on your physical Android device.\n\nTerms of Service:\nScrollLock is provided as-is to assist users in regulating digital media consumption. Users may disable or uninstall the application at any time.",
                         fontSize = 12.sp,
                         color = SecondaryText,
                         lineHeight = 18.sp

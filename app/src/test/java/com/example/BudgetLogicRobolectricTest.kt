@@ -186,4 +186,36 @@ class BudgetLogicRobolectricTest {
         assertEquals(1, records.size)
         assertEquals(100, records[0].precisionPercent)
     }
+
+    @Test
+    fun testYouTubeVariantRecognitionAndReset() = runBlocking {
+        repository.initializeDefaultBudgetsIfEmpty()
+        val yt = repository.getBudget(ytPkg)
+        assertNotNull(yt)
+        assertEquals(0, yt?.launchLimit) // 0 means no arbitrary launch lockout for YouTube
+        assertEquals(100, yt?.dailyLimit)
+
+        // Verify variant detection
+        assertTrue(MonitoredAppInfo.isScrollTrackingSupportedFor(ytPkg))
+        assertTrue(MonitoredAppInfo.isScrollTrackingSupportedFor("com.google.android.apps.youtube.mango"))
+        assertEquals(MonitoredAppInfo.YOUTUBE, MonitoredAppInfo.findByPackage("com.google.android.youtube"))
+        assertEquals(MonitoredAppInfo.YOUTUBE, MonitoredAppInfo.findByPackage("com.google.android.apps.youtube.mango"))
+
+        // Record a YouTube short observation
+        repository.recordObservation(
+            ScrollObservation(
+                targetPackage = ytPkg,
+                timestamp = System.currentTimeMillis(),
+                eventClassification = EventClassification.SWIPE_FEED_SHORTS,
+                verificationStatus = VerificationStatus.VERIFIED,
+                rawDeltaY = 150,
+                sourceNodeClass = "ReelRecyclerView"
+            )
+        )
+        assertEquals(1, repository.getScrollCountToday(ytPkg))
+
+        // Reset YouTube usage
+        repository.resetTodayUsage(ytPkg)
+        assertEquals(0, repository.getScrollCountToday(ytPkg))
+    }
 }

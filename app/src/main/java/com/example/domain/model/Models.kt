@@ -119,12 +119,14 @@ data class MonitoredAppInfo(
         fun isScrollTrackingSupportedFor(packageName: String): Boolean {
             return packageName == INSTAGRAM.packageName ||
                     packageName == YOUTUBE.packageName ||
+                    packageName.contains("youtube", ignoreCase = true) ||
                     packageName == TIKTOK.packageName ||
                     packageName == "com.ss.android.ugc.trill"
         }
 
         fun findByPackage(pkg: String): MonitoredAppInfo? {
             return POPULAR_CATALOG.find { it.packageName == pkg }
+                ?: if (pkg.contains("youtube", ignoreCase = true)) YOUTUBE else null
         }
     }
 }
@@ -210,4 +212,13 @@ data class SpikeSpikeRecord(
     val precisionPercent: Int,
     val recallPercent: Int,
     val notes: String
+)
+
+data class VideoDetectionDebugLogEntry(
+    val timestamp: Long,
+    val packageName: String,
+    val appName: String,
+    val signature: String,
+    val counted: Boolean,
+    val reason: String
 )

@@ -62,11 +62,18 @@ class EnforcementManager(
         if (budget.lockResetTimestamp > 0) {
             if (now < budget.lockResetTimestamp) {
                 // App is still locked until the random reset expires
+                val countToday = budgetRepository.getScrollCountToday(targetPackage)
+                val currentMetricStr = if (budget.dailyLimit > 0) {
+                    "$countToday of ${budget.dailyLimit} scrolls used"
+                } else {
+                    "$countToday scrolls used"
+                }
+                val limitMetricStr = if (budget.dailyLimit > 0) "${budget.dailyLimit} scrolls" else "Daily limit"
                 triggerEnforcement(
                     budget = budget,
                     reason = LimitExhaustionReason.SCROLL_LIMIT_REACHED,
-                    currentMetric = "Random Lock Active",
-                    limitMetric = "Unlocks soon",
+                    currentMetric = currentMetricStr,
+                    limitMetric = limitMetricStr,
                     lockResetTimestamp = budget.lockResetTimestamp,
                     onPerformHomeAction = onPerformHomeAction
                 )

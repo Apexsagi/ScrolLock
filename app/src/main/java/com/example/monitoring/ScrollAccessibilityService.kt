@@ -29,7 +29,8 @@ class ScrollAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        ScrollLockApplication.scrollMonitor?.onAccessibilityEvent(event) {
+        val root = try { rootInActiveWindow } catch (_: Exception) { null }
+        ScrollLockApplication.scrollMonitor?.onAccessibilityEvent(event, root) {
             performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }

@@ -56,7 +56,7 @@ class BudgetRepository(private val database: ScrollLockDatabase) {
                     displayName = MonitoredAppInfo.YOUTUBE.displayName,
                     dailyLimit = 100,
                     screenTimeLimitMinutes = 60,
-                    launchLimit = 20,
+                    launchLimit = 0,
                     scrollCountingSupported = true,
                     category = "Video",
                     isEnabled = true,
@@ -97,6 +97,12 @@ class BudgetRepository(private val database: ScrollLockDatabase) {
                 )
             )
             appBudgetDao.insertAll(defaults)
+        } else {
+            // Self-healing migration for existing databases: ensure YouTube doesn't suffer from legacy launchLimit lockouts
+            val ytBudget = appBudgetDao.getBudgetByPackage(MonitoredAppInfo.YOUTUBE.packageName)
+            if (ytBudget != null && ytBudget.launchLimit == 20) {
+                appBudgetDao.updateLaunchLimit(MonitoredAppInfo.YOUTUBE.packageName, 0)
+            }
         }
     }
 

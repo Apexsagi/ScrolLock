@@ -19,6 +19,7 @@ import com.example.domain.model.MonitoredAppInfo
 import com.example.domain.model.MonitoringHealthInfo
 import com.example.domain.model.ScrollObservation
 import com.example.domain.model.SpikeSpikeRecord
+import com.example.domain.model.VideoDetectionDebugLogEntry
 import com.example.monitoring.AccessibilityScrollMonitor
 import com.example.monitoring.FeasibilitySpikeManager
 import com.example.monitoring.SpikeScenarioResult
@@ -124,6 +125,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isSpikeRunning = MutableStateFlow(false)
     val isSpikeRunning: StateFlow<Boolean> = _isSpikeRunning.asStateFlow()
+
+    val debugLogs: StateFlow<List<VideoDetectionDebugLogEntry>> = (scrollMonitor?.debugLogs
+        ?: MutableStateFlow(emptyList())).stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
+        )
+
+    fun isTrackingApproximate(packageName: String): Boolean =
+        scrollMonitor?.isTrackingApproximate(packageName) ?: false
 
     init {
         refreshHealthAndUsage()

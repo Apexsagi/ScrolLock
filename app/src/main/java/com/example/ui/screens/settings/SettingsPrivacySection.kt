@@ -110,7 +110,7 @@ fun SettingsPrivacySection(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "ScreenLock operates completely locally using Android's native Accessibility and UsageStats APIs. No account registration, analytics telemetry, or server communication occurs. All your statistics are stored in your phone's encrypted Room database.",
+                    text = "ScrollLock operates completely locally using Android's native Accessibility and UsageStats APIs. No account registration, analytics telemetry, or server communication occurs. All your statistics are stored in your phone's encrypted Room database.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SecondaryText,
                     lineHeight = 18.sp
@@ -118,7 +118,7 @@ fun SettingsPrivacySection(
             }
         }
 
-        // 2. App Lock for ScreenLock itself
+        // 2. App Lock for ScrollLock itself
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -146,8 +146,8 @@ fun SettingsPrivacySection(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Lock ScreenLock App", fontWeight = FontWeight.Bold, color = PrimaryText)
-                            Text("Require PIN to open ScreenLock settings and dashboard", fontSize = 12.sp, color = SecondaryText)
+                            Text("Lock ScrollLock App", fontWeight = FontWeight.Bold, color = PrimaryText)
+                            Text("Require PIN to open ScrollLock settings and dashboard", fontSize = 12.sp, color = SecondaryText)
                         }
                     }
 
@@ -254,7 +254,7 @@ fun SettingsPrivacySection(
     if (showExportDialog) {
         val exportJson = """
             {
-              "app": "ScreenLock",
+              "app": "ScrollLock",
               "exportedAt": "${System.currentTimeMillis()}",
               "deviceProtection": "ACTIVE",
               "settings": {
@@ -287,7 +287,7 @@ fun SettingsPrivacySection(
                 Button(
                     onClick = {
                         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("ScreenLock Export", exportJson))
+                        cm.setPrimaryClip(ClipData.newPlainText("ScrollLock Export", exportJson))
                         showExportDialog = false
                         Toast.makeText(context, "Export copied to clipboard", Toast.LENGTH_SHORT).show()
                     }

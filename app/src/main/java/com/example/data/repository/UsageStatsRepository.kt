@@ -36,14 +36,17 @@ class UsageStatsRepository(private val context: Context) {
         val end = System.currentTimeMillis()
 
         return try {
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                start,
-                end
-            ) ?: return 0L
-
-            val appStat = stats.find { it.packageName == packageName }
-            appStat?.totalTimeInForeground ?: 0L
+            val aggregated = usageStatsManager.queryAndAggregateUsageStats(start, end)
+            if (aggregated.containsKey(packageName)) {
+                aggregated[packageName]?.totalTimeInForeground ?: 0L
+            } else {
+                val stats = usageStatsManager.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    start,
+                    end
+                ) ?: return 0L
+                stats.filter { it.packageName == packageName }.sumOf { it.totalTimeInForeground }
+            }
         } catch (_: Exception) {
             0L
         }

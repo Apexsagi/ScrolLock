@@ -85,7 +85,7 @@ import com.example.ui.theme.YouTubeRed
  * 4 Destinations: Home, Stats, Rules, Profile
  */
 @Composable
-fun ScreenLockBottomBar(
+fun ScrollLockBottomBar(
     currentDestination: ScreenDestination?,
     onNavigate: (ScreenDestination) -> Unit,
     modifier: Modifier = Modifier
@@ -152,6 +152,13 @@ fun ScreenLockBottomBar(
         }
     }
 }
+
+@Composable
+fun ScreenLockBottomBar(
+    currentDestination: ScreenDestination?,
+    onNavigate: (ScreenDestination) -> Unit,
+    modifier: Modifier = Modifier
+) = ScrollLockBottomBar(currentDestination, onNavigate, modifier)
 
 @Composable
 private fun BottomNavItem(

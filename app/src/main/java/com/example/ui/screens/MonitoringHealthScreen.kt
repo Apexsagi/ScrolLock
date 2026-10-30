@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.example.domain.model.CapabilityState
 import com.example.domain.model.MonitoringHealthInfo
 import com.example.domain.model.ScrollObservation
+import com.example.domain.model.VideoDetectionDebugLogEntry
 import com.example.ui.components.PermissionStatusRow
 import com.example.ui.components.SettingsSection
 import com.example.ui.theme.PrimaryBlue
@@ -63,6 +66,7 @@ import java.util.Locale
 fun MonitoringHealthScreen(
     health: MonitoringHealthInfo,
     recentObservations: List<ScrollObservation>,
+    debugLogs: List<VideoDetectionDebugLogEntry> = emptyList(),
     onRefreshHealth: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -297,6 +301,95 @@ fun MonitoringHealthScreen(
                                 text = obs.verificationStatus.label,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = WellbeingSuccess
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Video Detection Debug Log
+        item {
+            Text(
+                text = "Video Detection Debug Log",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        if (debugLogs.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Box(modifier = Modifier.padding(20.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "No video detections logged yet. Open YouTube Shorts, Instagram Reels, or TikTok to check counts against your viewing session.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        } else {
+            items(debugLogs.size) { index ->
+                val log = debugLogs[index]
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = log.appName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = timeFormatter.format(Date(log.timestamp)),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Signature: ${log.signature}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = log.reason,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (log.counted) WellbeingSuccess.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = if (log.counted) "+1 Counted" else "Skipped",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (log.counted) WellbeingSuccess else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }

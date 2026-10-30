@@ -141,7 +141,7 @@ fun SettingsPermissionsSection(
                 // 2. Usage Access
                 PermissionStatusRow(
                     title = "Usage Access",
-                    description = "Allows ScreenLock to compute daily screen time and aggregate statistics",
+                    description = "Allows ScrollLock to compute daily screen time and aggregate statistics",
                     isGranted = health?.usageAccessGranted == true,
                     onFix = {
                         try {
@@ -204,7 +204,7 @@ fun SettingsPermissionsSection(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Aggressive battery savers (common on Samsung, Xiaomi MIUI, OnePlus, Huawei) may kill the Accessibility service when in deep sleep. Set ScreenLock's battery usage to 'Unrestricted' for reliable monitoring.",
+                    text = "Aggressive battery savers (common on Samsung, Xiaomi MIUI, OnePlus, Huawei) may kill the Accessibility service when in deep sleep. Set ScrollLock's battery usage to 'Unrestricted' for reliable monitoring.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SecondaryText,
                     lineHeight = 18.sp

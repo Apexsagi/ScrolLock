@@ -81,13 +81,13 @@ fun AnalyticsScreen(
     var chartMetric by remember { mutableStateOf("Scrolls") } // "Scrolls" vs "Minutes"
 
     val totalDaysRecorded = summaries.map { it.dateKey }.distinct().size
-    val daysUnderBudget = summaries.filter { !it.budgetReached }.map { it.dateKey }.distinct().size
+    val daysUnderBudget = if (totalDaysRecorded > 0) summaries.filter { !it.budgetReached }.map { it.dateKey }.distinct().size else 0
     val daysLimitReached = summaries.filter { it.budgetReached }.map { it.dateKey }.distinct().size
 
     val totalTodayScrolls = scrollCountsMap.values.sum()
     val totalTodayMinutes = (screenTimesMap.values.sum() / (60 * 1000L)).toInt()
     val totalScrollsRecorded = summaries.sumOf { it.verifiedScrollCount } + totalTodayScrolls
-    val estimatedMinutesSaved = (daysUnderBudget * 25).coerceAtLeast(0)
+    val estimatedMinutesSaved = if (daysUnderBudget > 0) (daysUnderBudget * 25) else 0
 
     val limitReachedEvents = remember(summaries) {
         summaries.filter { it.budgetReached }.sortedByDescending { it.dateKey }
@@ -205,8 +205,8 @@ fun AnalyticsScreen(
             ) {
                 MetricCard(
                     title = "Estimated Saved",
-                    value = "~${estimatedMinutesSaved}m",
-                    subtitle = "Mindful pauses",
+                    value = if (estimatedMinutesSaved > 0) "~${estimatedMinutesSaved}m" else "0m",
+                    subtitle = if (estimatedMinutesSaved > 0) "Mindful pauses" else "Start scrolling to save time",
                     icon = Icons.Default.Schedule,
                     tint = PrimaryBlue,
                     modifier = Modifier.weight(1f)
@@ -417,7 +417,7 @@ fun AnalyticsScreen(
             item {
                 EmptyAnalyticsState(
                     title = "Building Your Digital History",
-                    message = "Every midnight, your daily app usage and scroll counts are logged here. Stay intentional today!"
+                    message = "No data yet. Start scrolling and we'll track it here."
                 )
             }
         } else {

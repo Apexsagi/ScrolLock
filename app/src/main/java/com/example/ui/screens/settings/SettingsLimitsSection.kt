@@ -298,7 +298,7 @@ fun SettingsLimitsSection(
                     color = PrimaryText
                 )
                 Text(
-                    text = "Select what action ScreenLock triggers immediately upon limit exhaustion",
+                    text = "Select what action ScrollLock triggers immediately upon limit exhaustion",
                     style = MaterialTheme.typography.bodySmall,
                     color = SecondaryText
                 )

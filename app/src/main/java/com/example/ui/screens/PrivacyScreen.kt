@@ -202,23 +202,38 @@ fun PrivacyScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "ScreenLock User",
+                                    text = "ScrollLock User",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryText
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = SuccessGreen.copy(alpha = 0.16f)
-                                ) {
-                                    Text(
-                                        text = "Focus Champion",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = SuccessGreen,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
+                                if (auditLogs.size >= 5) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = SuccessGreen.copy(alpha = 0.16f)
+                                    ) {
+                                        Text(
+                                            text = "Focus Champion",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SuccessGreen,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                } else {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = PrimaryBlue.copy(alpha = 0.16f)
+                                    ) {
+                                        Text(
+                                            text = "Getting Started",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PrimaryBlue,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -274,7 +289,7 @@ fun PrivacyScreen(
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("Apple Dark Mode", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PrimaryText)
+                                Text("Dark mode", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PrimaryText)
                                 Text("Deep OLED contrast (#050B16)", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
                             }
                         }
@@ -452,7 +467,7 @@ fun PrivacyScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    PrivacyBulletPoint("Zero Telemetry Uploads: ScreenLock contains no third-party tracking, advertising, or remote analytics SDKs.")
+                    PrivacyBulletPoint("Zero Telemetry Uploads: ScrollLock contains no third-party tracking, advertising, or remote analytics SDKs.")
                     Spacer(modifier = Modifier.height(8.dp))
                     PrivacyBulletPoint("Strict Gesture Filtering: We do not capture or record screen contents, passwords, chats, camera feeds, or search text.")
                     Spacer(modifier = Modifier.height(8.dp))
@@ -539,14 +554,14 @@ fun PrivacyScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.HelpOutline, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("How ScreenLock Enforces Limits", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = PrimaryText)
+                            Text("How ScrollLock Enforces Limits", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = PrimaryText)
                         }
                         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = SecondaryText, modifier = Modifier.size(18.dp))
                     }
 
                     AnimatedVisibility(visible = showHelpDialog) {
                         Text(
-                            text = "ScreenLock monitors feed scrolling and foreground time through Android's accessibility and usage APIs. When your daily budget is exhausted, ScreenLock triggers a lock overlay and redirects to the home screen to break compulsive loops.",
+                            text = "ScrollLock monitors feed scrolling and foreground time through Android's accessibility and usage APIs. When your daily budget is exhausted, ScrollLock triggers a lock overlay and redirects to the home screen to break compulsive loops.",
                             style = MaterialTheme.typography.bodySmall,
                             color = SecondaryText,
                             modifier = Modifier.padding(start = 30.dp, top = 4.dp, bottom = 8.dp)
@@ -574,7 +589,7 @@ fun PrivacyScreen(
 
                     AnimatedVisibility(visible = showBatteryTips) {
                         Text(
-                            text = "To prevent the Android OS from stopping background scroll counting, ensure ScreenLock is excluded from aggressive battery optimization in Device Settings -> Battery -> Unrestricted.",
+                            text = "To prevent the Android OS from stopping background scroll counting, ensure ScrollLock is excluded from aggressive battery optimization in Device Settings -> Battery -> Unrestricted.",
                             style = MaterialTheme.typography.bodySmall,
                             color = SecondaryText,
                             modifier = Modifier.padding(start = 30.dp, top = 4.dp, bottom = 8.dp)
@@ -653,7 +668,7 @@ fun PrivacyScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "ScreenLock for Android",
+                        text = "ScrollLock for Android",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = PrimaryText

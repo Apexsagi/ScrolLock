@@ -408,7 +408,7 @@ fun LimitCountdownBox(
                 color = PrimaryBlue
             )
             Text(
-                text = if (isRandomReset) "Unlocks at $unlockTimeStr" else "at local midnight",
+                text = if (isRandomReset) "Resets at $unlockTimeStr" else "Resets at 12:00 AM (midnight)",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

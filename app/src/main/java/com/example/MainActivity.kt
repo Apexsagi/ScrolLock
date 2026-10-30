@@ -39,7 +39,7 @@ import com.example.ui.screens.WelcomeScreen
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import com.example.ui.components.ScreenLockBottomBar
+import com.example.ui.components.ScrollLockBottomBar
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.ScrollLockTheme
 
@@ -103,6 +103,7 @@ fun ScrollLockApp(viewModel: MainViewModel) {
     val spikeResults by viewModel.lastSpikeResults.collectAsStateWithLifecycle()
     val isSpikeRunning by viewModel.isSpikeRunning.collectAsStateWithLifecycle()
     val savedSpikeRecords by viewModel.spikeRecords.collectAsStateWithLifecycle()
+    val debugLogs by viewModel.debugLogs.collectAsStateWithLifecycle()
 
     val isMainTab = currentScreen in listOf(
         ScreenDestination.DASHBOARD,
@@ -125,7 +126,7 @@ fun ScrollLockApp(viewModel: MainViewModel) {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (isMainTab) {
-                ScreenLockBottomBar(
+                ScrollLockBottomBar(
                     currentDestination = currentScreen,
                     onNavigate = { dest -> viewModel.navigateTo(dest) }
                 )
@@ -180,6 +181,7 @@ fun ScrollLockApp(viewModel: MainViewModel) {
                         screenTimesMap = screenTimesMap,
                         launchesMap = launchesMap,
                         health = health,
+                        isTrackingApproximate = { pkg -> viewModel.isTrackingApproximate(pkg) },
                         onNavigate = { dest -> viewModel.navigateTo(dest) },
                         onSelectAppDetail = { pkg -> viewModel.selectAppDetail(pkg) },
                         onRefresh = { viewModel.refreshHealthAndUsage() }
@@ -210,6 +212,7 @@ fun ScrollLockApp(viewModel: MainViewModel) {
                         onDeleteBudget = { pkg -> viewModel.deleteBudget(pkg) },
                         onPauseApp = { pkg, mins -> viewModel.pauseApp(pkg, mins) },
                         onResumeApp = { pkg -> viewModel.resumeApp(pkg) },
+                        onResetUsage = { pkg -> viewModel.resetTodayUsage(pkg) },
                         onRecordFailedAttempt = { viewModel.recordFailedAttempt() },
                         onResetFailedAttempts = { viewModel.resetFailedAttempts() },
                         onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
@@ -272,6 +275,7 @@ fun ScrollLockApp(viewModel: MainViewModel) {
                     MonitoringHealthScreen(
                         health = health,
                         recentObservations = recentObs,
+                        debugLogs = debugLogs,
                         onRefreshHealth = { viewModel.refreshHealthAndUsage() },
                         onNavigateBack = { viewModel.navigateTo(ScreenDestination.DASHBOARD) }
                     )

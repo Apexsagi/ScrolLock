@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -28,14 +32,18 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -92,6 +100,7 @@ fun AppDetailSettingsScreen(
     onDeleteBudget: (packageName: String) -> Unit,
     onPauseApp: (packageName: String, minutes: Int) -> Unit,
     onResumeApp: (packageName: String) -> Unit,
+    onResetUsage: (packageName: String) -> Unit = {},
     onRecordFailedAttempt: () -> Unit = {},
     onResetFailedAttempts: () -> Unit = {},
     onNavigateBack: () -> Unit,
@@ -214,6 +223,76 @@ fun AppDetailSettingsScreen(
                             color = SecondaryText
                         )
                     }
+                }
+            }
+        }
+
+        // Quick Actions: Launch on Phone & Reset Usage / Unblock
+        item {
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val launchIntent = context.packageManager.getLaunchIntentForPackage(budget.packageName)
+                        if (launchIntent != null) {
+                            context.startActivity(launchIntent)
+                        } else {
+                            val url = when {
+                                budget.packageName.contains("youtube") -> "https://www.youtube.com"
+                                budget.packageName.contains("instagram") -> "https://www.instagram.com"
+                                else -> "market://details?id=${budget.packageName}"
+                            }
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Could not open ${budget.displayName}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .minimumInteractiveComponentSize()
+                        .testTag("launch_app_button"),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.OpenInNew,
+                        contentDescription = "Open App",
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open on Phone", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        executeWithPinCheck(userPreferences.pinRequireChangeLimits) {
+                            onResetUsage(budget.packageName)
+                            Toast.makeText(context, "Today's usage & locks reset for ${budget.displayName}", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .minimumInteractiveComponentSize()
+                        .testTag("reset_app_usage_button"),
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.6f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reset Usage",
+                        tint = SuccessGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Reset Usage", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = SuccessGreen)
                 }
             }
         }
@@ -651,7 +730,7 @@ fun AppDetailSettingsScreen(
     if (showDeleteConfirm) {
         ConfirmationDialog(
             title = "Remove ${budget.displayName}?",
-            text = "This will remove ${budget.displayName} from ScreenLock restrictions and stop tracking its limits.",
+            text = "This will remove ${budget.displayName} from ScrollLock restrictions and stop tracking its limits.",
             confirmText = "Remove App",
             onConfirm = {
                 showDeleteConfirm = false

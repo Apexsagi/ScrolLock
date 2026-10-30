@@ -1,11 +1,14 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +49,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -116,6 +120,7 @@ fun DashboardScreen(
     screenTimesMap: Map<String, Long>,
     launchesMap: Map<String, Int>,
     health: MonitoringHealthInfo,
+    isTrackingApproximate: (String) -> Boolean = { false },
     onNavigate: (ScreenDestination) -> Unit,
     onSelectAppDetail: (packageName: String) -> Unit,
     onRefresh: () -> Unit,
@@ -140,7 +145,7 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 116.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 124.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // A. Clean, Compact Apple Header
@@ -240,6 +245,7 @@ fun DashboardScreen(
                         screenTimeMillis = screenTimeMillis,
                         launchesCount = launches,
                         capabilityState = health.capabilityState,
+                        isApproximate = isTrackingApproximate(budget.packageName),
                         onClick = { onSelectAppDetail(budget.packageName) }
                     )
                 }
@@ -404,7 +410,7 @@ private fun AppleHeader(
 
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
-                    text = "ScreenLock",
+                    text = "ScrollLock",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryText,
@@ -842,6 +848,7 @@ fun AppleRestrictedAppCard(
     screenTimeMillis: Long,
     launchesCount: Int,
     capabilityState: CapabilityState,
+    isApproximate: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -927,31 +934,64 @@ fun AppleRestrictedAppCard(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Compact Status Badge
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = statusColor.copy(alpha = 0.12f),
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, statusColor.copy(alpha = 0.35f))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        // Compact Status Badge
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = statusColor.copy(alpha = 0.12f),
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, statusColor.copy(alpha = 0.35f))
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(5.dp)
-                                    .clip(CircleShape)
-                                    .background(statusColor)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = statusBadgeText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = statusColor,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 10.5.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(statusColor)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = statusBadgeText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = statusColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 10.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        val context = LocalContext.current
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(ElevatedCard)
+                                .clickable {
+                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(budget.packageName)
+                                    if (launchIntent != null) {
+                                        context.startActivity(launchIntent)
+                                    } else {
+                                        val url = if (budget.packageName.contains("youtube")) "https://www.youtube.com" else "https://instagram.com"
+                                        try {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        } catch (_: Exception) {}
+                                    }
+                                }
+                                .testTag("card_open_button_${budget.packageName}"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = "Open ${budget.displayName}",
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                     }
@@ -1040,7 +1080,7 @@ fun AppleRestrictedAppCard(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
-                                text = "Feed Scrolls: $scrollCount",
+                                text = if (isApproximate) "Feed Scrolls: ~$scrollCount (Approximate)" else "Feed Scrolls: $scrollCount",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = PrimaryText,
                                 fontWeight = FontWeight.Medium,
@@ -1049,7 +1089,7 @@ fun AppleRestrictedAppCard(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${budget.dailyLimit} limit • $remainingScrolls left",
+                                text = if (isApproximate) "${budget.dailyLimit} limit • Approximate tracking" else "${budget.dailyLimit} limit • $remainingScrolls left",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isScrollExhausted) DangerRed else SecondaryText,
                                 fontSize = 11.sp,
@@ -1064,7 +1104,7 @@ fun AppleRestrictedAppCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Feed Scrolls: $scrollCount",
+                                text = if (isApproximate) "Feed Scrolls: ~$scrollCount (Approximate)" else "Feed Scrolls: $scrollCount",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = PrimaryText,
                                 fontWeight = FontWeight.Medium,
@@ -1075,7 +1115,7 @@ fun AppleRestrictedAppCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "${budget.dailyLimit} limit • $remainingScrolls left",
+                                text = if (isApproximate) "${budget.dailyLimit} limit • Approximate tracking" else "${budget.dailyLimit} limit • $remainingScrolls left",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isScrollExhausted) DangerRed else SecondaryText,
                                 fontSize = 11.5.sp,
